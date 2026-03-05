@@ -1,21 +1,20 @@
-# SecureScan - Project Roadmap
+# Chaca - Project Roadmap
 
 ## Project Overview
 
 | Field | Value |
 |-------|-------|
 | **ID** | security-scanner |
-| **Title** | SecureScan - Web Security Scanner |
-| **Status** | In Progress |
+| **Title** | Chaca - Web Security Scanner |
+| **Status** | v0.5.0 Released |
 | **Complexity** | Medium |
 | **Total Epics** | 6 |
 | **Total Tasks** | 24 |
-| **Estimated Duration** | 12 weeks |
-| **Tech Stack** | Tauri 2.10.3 + React 19.2 + Tailwind CSS v4 |
+| **Tech Stack** | Tauri 2 + React 19 + Tailwind CSS v4 + Rust |
 
 ## Project Description
 
-A user-friendly desktop security scanner for vibe coders and developers to detect OWASP Top 10 vulnerabilities, API exposure, and unrestricted data exposure before deploying their apps.
+A user-friendly desktop security scanner for vibe coders and developers to detect OWASP Top 10 vulnerabilities, API exposure, CMS-specific issues, exposed services, and unrestricted data exposure before deploying their apps.
 
 ---
 
@@ -24,46 +23,53 @@ A user-friendly desktop security scanner for vibe coders and developers to detec
 ### Epic 1: Project Setup
 | Status | Task | Priority |
 |--------|------|----------|
-| todo | Initialize Tauri + React project | critical |
-| todo | Configure Tailwind CSS v4 | high |
-| todo | Set up logging and error handling | high |
+| done | Initialize Tauri + React project | critical |
+| done | Configure Tailwind CSS v4 | high |
+| done | Set up logging and error handling | high |
 
 ### Epic 2: Core Infrastructure
 | Status | Task | Priority |
 |--------|------|----------|
-| todo | Implement Rust HTTP client wrapper | critical |
-| todo | Create scanner engine architecture | critical |
-| todo | Set up frontend state management | high |
+| done | Implement Rust HTTP client wrapper | critical |
+| done | Create scanner engine architecture | critical |
+| done | Set up frontend state management (Zustand) | high |
 
 ### Epic 3: Scanner Features
 | Status | Task | Priority |
 |--------|------|----------|
-| todo | Implement endpoint discovery | critical |
-| todo | Implement passive scanner | critical |
-| todo | Implement active scanner with OWASP detection | critical |
-| todo | Implement API exposure and data exposure detection | high |
+| done | Implement endpoint discovery (crawler) | critical |
+| done | Implement passive scanner | critical |
+| done | Implement active scanner with OWASP detection | critical |
+| done | Implement API exposure and data exposure detection | high |
+| done | CMS detection (WordPress, Drupal, Joomla, Shopify, Magento) | high |
+| done | Target intelligence / reconnaissance | high |
+| done | Exposed services & admin panel detection | high |
+| done | Information disclosure detection | medium |
+| done | Vulnerability knowledge base (50+ definitions) | high |
+| done | Confidence scoring (Confirmed/Firm/Tentative) | medium |
 
 ### Epic 4: Frontend Foundation
 | Status | Task | Priority |
 |--------|------|----------|
-| todo | Create scan input component | critical |
-| todo | Create scan progress component | high |
-| todo | Implement Tauri IPC commands | critical |
+| done | Create scan input component | critical |
+| done | Create scan progress component | high |
+| done | Implement Tauri IPC commands | critical |
 
 ### Epic 5: Dashboard & Reports
 | Status | Task | Priority |
 |--------|------|----------|
-| todo | Create results dashboard | critical |
-| todo | Create detailed report viewer | critical |
-| todo | Implement export functionality | medium |
-| todo | Apply Figma design system | high |
+| done | Create results dashboard (score, grid, charts) | critical |
+| done | Create detailed report viewer (CWE links, references) | critical |
+| done | Implement export functionality (JSON, CSV) | medium |
+| done | Target Intelligence panel | high |
+| done | Apply anti-slop design system | high |
 
 ### Epic 6: Polish & Build
 | Status | Task | Priority |
 |--------|------|----------|
-| todo | Performance optimization | medium |
-| todo | Error handling and edge cases | high |
-| todo | Build macOS application | critical |
+| done | Comprehensive settings page (6 tabs, persistent storage) | high |
+| done | UI redesign with monospace-first anti-slop design | high |
+| done | Build macOS application (.app + .dmg) | critical |
 
 ---
 
@@ -79,54 +85,17 @@ A user-friendly desktop security scanner for vibe coders and developers to detec
 
 ---
 
-## Dependencies Graph
-
-```
-epic-1 (Project Setup)
-├── epic-1-task-1 → epic-2-task-1 (Initialize → HTTP client)
-├── epic-1-task-1 → epic-2-task-2 (Initialize → Scanner engine)
-├── epic-1-task-1 → epic-1-task-2 (parallel)
-├── epic-1-task-1 → epic-1-task-3 (parallel)
-│
-epic-2 (Core Infrastructure)
-├── epic-2-task-1 → epic-3-task-1 (HTTP → Endpoint discovery)
-├── epic-2-task-2 → epic-3-task-1 (Engine → Endpoint discovery)
-├── epic-1-task-3 → epic-2-task-3 (Error handling → State)
-│
-epic-3 (Scanner Features)
-├── epic-3-task-1 → epic-3-task-2 (Discovery → Passive)
-├── epic-3-task-2 → epic-3-task-3 (Passive → Active)
-├── epic-3-task-3 → epic-3-task-4 (Active → API/Data)
-│
-epic-4 (Frontend Foundation)
-├── epic-2-task-3 → epic-4-task-1 (State → Input)
-├── epic-4-task-1 → epic-4-task-2 (Input → Progress)
-├── epic-4-task-1 + epic-2-task-2 → epic-4-task-3 (IPC)
-│
-epic-5 (Dashboard & Reports)
-├── epic-4-task-3 → epic-5-task-1 (IPC → Dashboard)
-├── epic-5-task-1 → epic-5-task-2 (Dashboard → Report)
-├── epic-5-task-2 → epic-5-task-3 (Report → Export)
-├── epic-5-task-1 → epic-5-task-4 (Dashboard → Design)
-│
-epic-6 (Polish & Build)
-├── epic-5-task-4 → epic-6-task-1 (Design → Perf)
-├── epic-6-task-1 → epic-6-task-2 (Perf → Error)
-└── epic-6-task-2 → epic-6-task-3 (Error → Build)
-```
-
----
-
 ## Progress Summary
 
-- **Completed**: 0/24 tasks (0%)
+- **Completed**: 24/24 tasks (100%)
 - **In Progress**: 0/24 tasks (0%)
-- **Todo**: 24/24 tasks (100%)
+- **Todo**: 0/24 tasks (0%)
 
 ---
 
-## Figma Design Reference
+## Version History
 
-Dashboard design uses AGENTIC DESIGN SYSTEM:
-- URL: https://www.figma.com/design/ZtYX833hphDk75UA5KgHms/AGENTIC-DESIGN-SYSTEM--BETA---Copy-?node-id=230-840
-- Focus: Security dashboard patterns, vulnerability visualization
+| Version | Date | Milestone |
+|---------|------|-----------|
+| 0.1.0 | 2026-03-05 | MVP — basic scanning, passive scan, dashboard, OWASP detection, macOS build |
+| 0.5.0 | 2026-03-05 | Expanded vuln DB, CMS detection, target intel, exposed services, info disclosure, settings, anti-slop UI, renamed to Chaca |

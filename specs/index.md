@@ -1,4 +1,4 @@
-# SDD Features Index
+# SDD Features Index — Chaca
 
 ## Navigation
 
@@ -17,7 +17,8 @@
 
 | Task ID | Feature | Completed |
 |---------|---------|-----------|
-| *none* | — | — |
+| security-scanner | Chaca v0.5.0 — Web Security Scanner | 2026-03-05 |
+| feat-001 | SDD Commands Implementation | 2024-09-19 |
 
 ### Backlog Features
 

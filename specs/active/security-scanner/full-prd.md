@@ -1,12 +1,14 @@
-# Security Scanner PRD - Full Version
+# Chaca - Security Scanner PRD (Full Version)
 
 ## 1. Executive Summary
 
-**Project Name:** SecureScan - Web Security Scanner
+**Project Name:** Chaca - Web Security Scanner (formerly SecureScan)
 
-**Type:** Desktop Application (Tauri + React)
+**Type:** Desktop Application (Tauri 2 + React 19 + Rust)
 
-**Core Summary:** A user-friendly security scanner that enables developers and non-technical "vibe coders" to identify OWASP Top 10 vulnerabilities, API exposure issues, and unrestricted data exposure in their web applications before deployment.
+**Version:** 0.5.0
+
+**Core Summary:** A user-friendly security scanner that enables developers and non-technical "vibe coders" to identify OWASP Top 10 vulnerabilities, API exposure, CMS-specific issues, exposed services, and unrestricted data exposure in their web applications before deployment.
 
 **Target Users:**
 - Developers with basic security awareness
@@ -28,9 +30,10 @@
 
 Create a security scanner that:
 - Detects OWASP Top 10 vulnerabilities automatically
-- Identifies exposed APIs and unrestricted data exposure
-- Provides beginner-friendly results with severity ratings
+- Identifies exposed APIs, services, and unrestricted data exposure
+- Provides beginner-friendly results with severity and confidence ratings
 - Works as a desktop app for privacy and offline capability
+- Reduces false positives through confidence scoring
 
 ---
 
@@ -56,226 +59,195 @@ Create a security scanner that:
 
 ## 4. Functional Requirements
 
-### 4.1 Core Features
+### 4.1 Core Features (Implemented in v0.5)
 
 #### F1: URL-Based Scanning
-- **Description**: User enters a URL to scan
-- **Input**: Single URL field with validation
-- **Process**: 
-  1. Fetch the target URL
-  2. Discover endpoints (crawl/spider)
-  3. Run active and passive security tests
-  4. Generate report
+- User enters a URL to scan
+- Automatic endpoint discovery via crawling
+- Passive and active security tests
+- Report generation with security score
 
 #### F2: OWASP Top 10 Vulnerability Detection
-- **Description**: Automatically test for OWASP API Security Top 10 (2023) vulnerabilities
-- **Coverage**:
-  1. Broken Object Level Authorization (BOLA)
-  2. Broken Authentication
-  3. Broken Object Property Level Authorization
-  4. Unrestricted Resource Consumption
-  5. Broken Function Level Authorization
-  6. Unrestricted Access to Sensitive Business Flows
-  7. Server-Side Request Forgery (SSRF)
-  8. Security Misconfiguration
-  9. Improper Inventory Management
-  10. Unsafe Consumption of API
+- BOLA, Broken Authentication, SSRF, Security Misconfiguration
+- SQL Injection, XSS (reflected, DOM-based indicators, attribute/event injection)
+- SSTI, CSRF, Open Redirect, Path Traversal
 
 #### F3: API Exposure Detection
-- **Description**: Identify if APIs are exposed publicly when they shouldn't be
-- **Checks**:
-  - API endpoints visible without authentication
-  - Internal API paths discovered in client-side code
-  - Debug/endpoints exposed in production
+- 57+ sensitive path probes (`/swagger.json`, `/env`, `/graphql`, `/wp-json/wp/v2/users`, etc.)
+- Internal API paths discovered in client-side code
+- Debug endpoints exposed in production
 
-#### F4: Unrestricted Data Exposure Detection
-- **Description**: Check if sensitive user data is exposed without authorization
-- **Checks**:
-  - PII in API responses without auth
-  - Excessive data in responses (over-fetching)
-  - User IDs enumerable through API
+#### F4: Data Exposure Detection
+- PII patterns in API responses (SSN, credit cards, emails, phone numbers)
+- Excessive data in responses
+- Sensitive data in URLs and headers
 
-#### F5: Scan Types
+#### F5: CMS Detection & Checks
+- Fingerprints WordPress, Drupal, Joomla, Shopify, Magento
+- Platform-specific vulnerability checks per CMS
+
+#### F6: Target Intelligence
+- IP resolution, DNS records
+- TLS certificate info
+- Server fingerprinting, HTTP version
+- Technology detection (frameworks, languages, CDNs, WAFs, hosting)
+- Cookie analysis
+- `robots.txt`, `sitemap.xml`, `security.txt` discovery
+
+#### F7: Exposed Services & Admin Panels
+- Supabase, Firebase, PocketBase URL detection in client code
+- Active probing of discovered service endpoints
+- Admin panel detection (phpMyAdmin, Adminer, wp-login, debug consoles)
+
+#### F8: Information Disclosure
+- Stack trace detection (Python, Java, PHP, .NET, Go, Ruby, Node.js)
+- Debug header detection (`X-Debug-Token`, `X-AspNet-Version`, etc.)
+- File path leak detection with false-positive filtering
+
+#### F9: Vulnerability Knowledge Base
+- 50+ embedded vulnerability definitions
+- CWE mappings, CVSS-aligned severity
+- Remediation guidance and external references
+
+#### F10: Scan Types
 - **Passive Scan**: Analyze responses without sending attack payloads
-  - No modifications to requests
-  - Safe to run on any endpoint
-  - Faster but less thorough
-  
-- **Active Scan**: Send attack payloads to identify vulnerabilities
-  - Tests for injection, auth bypass, etc.
-  - May impact target server
-  - Requires user confirmation before running
-
+- **Active Scan**: Send test payloads to identify vulnerabilities
 - **Full Scan**: Both passive + active combined
-  - Comprehensive analysis
-  - Default recommended option
 
-#### F6: Results Dashboard
-- **Description**: Visual overview of scan results
-- **Components**:
-  - Overall security score (0-100)
-  - Severity breakdown (Critical/High/Medium/Low/Info)
-  - Number of issues found
-  - Quick summary of top issues
-  - Trend comparison (if previous scans exist)
+#### F11: Results Dashboard
+- Overall security score (0-100, category-capped deduction model)
+- Severity breakdown (Critical/High/Medium/Low/Info)
+- Confidence levels (Confirmed/Firm/Tentative)
+- Vulnerability grid, scan chart, stats
+- Target Intelligence panel
 
-#### F7: Detailed Report
-- **Description**: Comprehensive breakdown of each vulnerability
-- **Sections per issue**:
-  - Title and severity rating
-  - Description (plain English, not technical jargon)
-  - Location (URL, endpoint, parameter)
-  - Evidence (request/response samples)
-  - Impact (what could happen)
-  - Remediation (how to fix it)
-  - Resources for learning more
+#### F12: Detailed Report
+- Title, severity, confidence
+- Description in plain English
+- Location (URL, endpoint, parameter)
+- Evidence
+- Remediation guidance
+- CWE links and external references
 
-#### F8: Severity Ratings
-- **Description**: Standardized severity classification
-- **Levels**:
-  | Level | Color | Description | Action |
-  |-------|-------|-------------|--------|
-  | Critical | Red | Immediate exploitation likely | Fix before deploy |
-  | High | Orange | Likely to be exploited | Fix within 1 week |
-  | Medium | Yellow | Potential exploitation | Fix within 1 month |
-  | Low | Blue | Minor security issue | Fix when possible |
-  | Info | Gray | Informational | Review for awareness |
+#### F13: Settings
+- Network (timeout, max redirects, user agent, custom headers)
+- Crawling (max depth, max pages, scope)
+- Passive scan (individual check toggles)
+- Active scan (individual test toggles)
+- Data detection (PII patterns, sensitivity)
+- Export/General preferences
+- Persistent storage via `tauri-plugin-store`
 
-### 4.2 User Interactions
+#### F14: Export
+- JSON export with full scan data
+- CSV export for spreadsheet analysis
 
-#### Scan Flow
+### 4.2 Scan Flow
 ```
 1. Launch App
    ↓
-2. Enter URL (e.g., https://myapp.com)
+2. Enter URL
    ↓
-3. Select Scan Type (Quick/Full/Custom)
+3. Select Scan Type (Passive/Full)
    ↓
-4. Confirm & Start Scan
+4. Start Scan
    ↓
-5. View Progress (live updates)
+5. View Progress (crawl → passive → active phases)
    ↓
-6. Results Dashboard (immediate summary)
+6. Results Dashboard (score, vulnerabilities, target intel)
    ↓
 7. Detailed Report (click for specifics)
    ↓
 8. Export (optional)
 ```
 
-### 4.3 Data Flow & Architecture
+### 4.3 Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      React Frontend                          │
-│  ┌──────────┐  ┌────────────┐  ┌──────────┐  ┌───────────┐  │
-│  │ URL Input│  │ Dashboard  │  │  Report  │  │  Export  │  │
-│  └────┬─────┘  └──────┬─────┘  └────┬─────┘  └─────┬─────┘  │
-│       │               │              │              │         │
-│       └───────────────┴──────────────┴──────────────┘         │
-│                              │                                │
-│                    Tauri IPC (invoke)                         │
-└──────────────────────────────┬────────────────────────────────┘
+│  ┌──────────┐  ┌────────────┐  ┌──────────┐  ┌───────────┐ │
+│  │ URL Input│  │ Dashboard  │  │  Report  │  │ Settings  │ │
+│  └────┬─────┘  └──────┬─────┘  └────┬─────┘  └─────┬─────┘ │
+│       └───────────────┴──────────────┴──────────────┘       │
+│                              │                               │
+│                    Tauri IPC (invoke)                        │
+└──────────────────────────────┬───────────────────────────────┘
                                │
-┌──────────────────────────────┴────────────────────────────────┐
+┌──────────────────────────────┴───────────────────────────────┐
 │                      Rust Backend                             │
-│  ┌─────────────┐  ┌─────────────┐  ┌────────────────────────┐ │
-│  │   HTTP     │  │  Scanner    │  │     Report            │ │
-│  │   Client   │  │  Engine     │  │     Generator        │ │
-│  │ (reqwest)  │  │             │  │                        │ │
-│  └──────┬──────┘  └──────┬──────┘  └──────────┬─────────┘ │
-│         │                 │                     │            │
-│         └─────────────────┴─────────────────────┘            │
-│                          │                                   │
-│              ┌───────────┴────────────┐                     │
-│              │    Vulnerability       │                     │
-│              │    Rules Database      │                     │
-│              └────────────────────────┘                     │
-└─────────────────────────────────────────────────────────────┘
+│  ┌─────────────┐  ┌─────────────┐  ┌────────────────────┐   │
+│  │   HTTP      │  │  Scanner    │  │   Target           │   │
+│  │   Client    │  │  Engine     │  │   Intelligence     │   │
+│  │ (reqwest)   │  │             │  │   (recon)          │   │
+│  └──────┬──────┘  └──────┬──────┘  └──────────┬─────────┘   │
+│         └────────────────┼─────────────────────┘             │
+│                          │                                    │
+│  ┌───────────┐  ┌───────┴───────┐  ┌────────────────────┐   │
+│  │  Passive  │  │    Active     │  │    CMS Detection   │   │
+│  │  Scanner  │  │    Scanner    │  │    & Checks        │   │
+│  └─────┬─────┘  └───────┬───────┘  └────────┬───────────┘   │
+│        └────────────────┼────────────────────┘               │
+│                         │                                     │
+│  ┌──────────────────────┴────────────────────────────────┐   │
+│  │              Rules & Knowledge Base                    │   │
+│  │  api_exposure │ data_exposure │ info_disclosure        │   │
+│  │  exposed_services │ vuln_db (50+ definitions)         │   │
+│  └───────────────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────┘
 ```
-
-### 4.4 Key Modules
-
-#### Frontend (React + TypeScript)
-
-| Module | Responsibility | Public API |
-|--------|---------------|------------|
-| `ScanInput` | URL input and validation | `onSubmit(url)` |
-| `ScanProgress` | Live scan progress display | `progress: { current, total, phase }` |
-| `Dashboard` | Results summary visualization | `score: number, issues: Issue[]` |
-| `ReportViewer` | Detailed vulnerability display | `issues: Issue[]` |
-| `ExportService` | Generate export files | `export(format, data)` |
-
-#### Backend (Rust)
-
-| Module | Responsibility | Public API |
-|--------|---------------|------------|
-| `http_client` | HTTP requests with Tauri plugin | `fetch()`, `crawl()` |
-| `scanner` | Orchestrate scan execution | `scan(url, options)` |
-| `passive_scanner` | Analyze without modification | `analyze(response)` |
-| `active_scanner` | Send test payloads | `test(payloads)` |
-| `rules` | OWASP detection rules | `detect_owasp()` |
-| `reporter` | Generate result reports | `generate_report()` |
 
 ---
 
 ## 5. Non-Functional Requirements
 
 ### 5.1 Performance
-
-- **Scan Speed**: Complete full scan of typical API (20 endpoints) in under 60 seconds
+- **Scan Speed**: Complete full scan of typical site in under 60 seconds
 - **App Startup**: <2 seconds to usable interface
 - **Memory Usage**: <200MB RAM during scanning
-- **Binary Size**: <10MB installer
 
 ### 5.2 Usability
-
 - **Onboarding**: First-time user can run first scan in under 2 minutes
 - **Error Handling**: All errors show friendly messages with suggested actions
-- **Accessibility**: Keyboard navigable, screen reader compatible (WCAG 2.1 AA)
-- **Offline**: Works completely offline after install
+- **Design**: Monospace-first, minimal UI following anti-slop design principles
 
 ### 5.3 Security
-
 - **Privacy**: No data sent to external servers (except target URL during scan)
 - **Safe Scanning**: Active scans can be canceled anytime
 - **Rate Limiting**: Built-in delays to avoid overwhelming target servers
 
 ### 5.4 Platform
-
-- **Initial Target**: macOS (Apple Silicon + Intel)
-- **Architecture**: Universal binary
-- **Requirements**: macOS 12.0+ (Monterey and later)
+- **Current Target**: macOS (Apple Silicon + Intel)
+- **Architecture**: Universal binary via Tauri
 
 ---
 
-## 6. Out of Scope (v1)
-
-The following are explicitly NOT included in v1:
+## 6. Out of Scope (v0.5)
 
 | Feature | Reason |
 |---------|--------|
-| **Authentication integration** | Too complex for v1 - user manually tests auth'd endpoints |
+| **Authentication integration** | Too complex — user manually tests auth'd endpoints |
 | **Project folder scanning** | Focus on URL/API scanning first |
-| **Continuous monitoring** | Single scan focus for v1 |
-| **Team collaboration** | Single user focus for v1 |
+| **Continuous monitoring** | Single scan focus |
+| **Team collaboration** | Single user focus |
 | **Linux/Windows builds** | macOS first, expand later |
 | **Mobile app scanning** | Web/API focus only |
-| **Cloud infrastructure scanning** | Separate product |
-| **Custom rule creation** | Built-in rules only for v1 |
+| **Custom rule creation** | Built-in rules only |
 | **Scheduled scans** | Manual trigger only |
-| **Browser extension** | Desktop app focus |
 
 ---
 
 ## 7. Success Metrics
 
 ### 7.1 Launch Criteria
-
-- [ ] Successfully scans a URL and returns results
-- [ ] Detects at least 5 OWASP Top 10 categories
-- [ ] Displays severity ratings correctly
-- [ ] Generates exportable report (JSON/CSV)
-- [ ] Works offline after installation
+- [x] Successfully scans a URL and returns results
+- [x] Detects OWASP Top 10 categories
+- [x] Displays severity and confidence ratings correctly
+- [x] Generates exportable report (JSON/CSV)
+- [x] Works offline after installation
+- [x] CMS detection and platform-specific checks
+- [x] Target intelligence collection
+- [x] Comprehensive settings page
 
 ### 7.2 Performance Metrics
 
@@ -283,89 +255,36 @@ The following are explicitly NOT included in v1:
 |--------|--------|
 | First scan completion | <60 seconds |
 | App startup time | <2 seconds |
-| User satisfaction score | >4/5 in beta |
-| Crash rate | <1% |
-
-### 7.3 Adoption Goals (6 months)
-
-- 1,000+ downloads
-- 500+ active users
-- 100+ scans run
-- GitHub stars: 50+
+| False positive rate | Low (confidence scoring) |
 
 ---
 
-## 8. Timeline
-
-### Phase 1: MVP (Weeks 1-4)
-- Basic URL scanning
-- Passive scan implementation
-- Simple dashboard
-- Basic OWASP detection (3 categories)
-
-### Phase 2: Core Features (Weeks 5-8)
-- Active scan implementation
-- Full OWASP Top 10 coverage
-- Report generation
-- Export functionality
-
-### Phase 3: Polish (Weeks 9-12)
-- UI/UX improvements
-- Error handling
-- Performance optimization
-- Beta testing
-
-### Phase 4: Launch (Week 13)
-- macOS release
-- Documentation
-- Community setup
-
----
-
-## 9. Open Questions
-
-| Question | Decision Needed |
-|----------|-----------------|
-| Scan history storage | Local SQLite vs. JSON files? |
-| Rule update mechanism | Manual updates vs. auto-update? |
-| Telemetry/analytics | Include anonymous usage data? |
-| Free vs. freemium | Free forever or premium features? |
-
----
-
-## 10. Appendix
-
-### A. OWASP API Security Top 10 (2023)
-
-1. API1:2023 - Broken Object Level Authorization
-2. API2:2023 - Broken Authentication
-3. API3:2023 - Broken Object Property Level Authorization
-4. API4:2023 - Unrestricted Resource Consumption
-5. API5:2023 - Broken Function Level Authorization
-6. API6:2023 - Unrestricted Access to Sensitive Business Flows
-7. API7:2023 - Server-Side Request Forgery
-8. API8:2023 - Security Misconfiguration
-9. API9:2023 - Improper Inventory Management
-10. API10:2023 - Unsafe Consumption of API
-
-### B. Severity Calculation
-
-CVSS 3.1 base score mapping:
-- Critical: 9.0 - 10.0
-- High: 7.0 - 8.9
-- Medium: 4.0 - 6.9
-- Low: 0.1 - 3.9
-- Info: 0.0
-
-### C. Technology Stack
+## 8. Technology Stack
 
 | Layer | Technology |
-|-------|------------|
-| Framework | Tauri 2.10.3 (March 2026) |
-| Frontend | React 19.2 + TypeScript |
-| Styling | Tailwind CSS v4.0 |
-| State | Zustand |
-| HTTP | tauri-plugin-http (reqwest) |
-| Build | Vite |
-| Icons | Lucide React |
-| Runtime | Node.js 22+ |
+|-------|-----------|
+| Native shell | Tauri 2 |
+| Frontend | React 19, TypeScript, Tailwind CSS v4 |
+| State | Zustand, tauri-plugin-store |
+| UI primitives | Radix UI, Lucide icons |
+| Charts | Recharts |
+| Backend | Rust (reqwest, regex, tokio, serde, tracing, base64) |
+| Build | Vite 7 |
+
+---
+
+## 9. Version History
+
+| Version | Milestone |
+|---------|-----------|
+| 0.1.0 | MVP — basic scanning, passive scan, dashboard, OWASP detection, macOS build |
+| 0.5.0 | Expanded vuln database (50+ types), CMS detection, target intelligence, exposed services, info disclosure, comprehensive settings, anti-slop UI redesign |
+
+---
+
+## 10. Author
+
+**Aris Setiawan**
+- Website: [madebyaris.com](https://madebyaris.com)
+- GitHub: [@madebyaris](https://github.com/madebyaris)
+- X: [@arisberikut](https://x.com/arisberikut)
