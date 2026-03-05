@@ -1,0 +1,414 @@
+{
+  "project": {
+    "id": "security-scanner",
+    "title": "SecureScan - Web Security Scanner",
+    "description": "A user-friendly desktop security scanner for vibe coders and developers to detect OWASP Top 10 vulnerabilities, API exposure, and unrestricted data exposure",
+    "sddVersion": "5.0",
+    "complexity": "medium",
+    "totalEpics": 6,
+    "totalTasks": 24,
+    "estimatedDuration": "12 weeks",
+    "createdAt": "2026-03-05"
+  },
+  "kanban": {
+    "columns": ["todo", "in-progress", "review", "done"]
+  },
+  "dag": {
+    "roots": ["epic-1-task-1"],
+    "parallelGroups": [
+      ["epic-1-task-1"],
+      ["epic-1-task-2", "epic-1-task-3"],
+      ["epic-2-task-1", "epic-2-task-2", "epic-2-task-3"],
+      ["epic-3-task-1", "epic-3-task-2", "epic-3-task-3", "epic-3-task-4"],
+      ["epic-4-task-1", "epic-4-task-2", "epic-4-task-3"],
+      ["epic-5-task-1", "epic-5-task-2", "epic-5-task-3", "epic-5-task-4"],
+      ["epic-6-task-1", "epic-6-task-2", "epic-6-task-3"]
+    ]
+  },
+  "epics": [
+    {
+      "id": "epic-1",
+      "title": "Project Setup",
+      "description": "Initialize Tauri + React project with proper tooling",
+      "status": "todo",
+      "tasks": ["epic-1-task-1", "epic-1-task-2", "epic-1-task-3"]
+    },
+    {
+      "id": "epic-2",
+      "title": "Core Infrastructure",
+      "description": "Backend HTTP client, scanner engine foundation, state management",
+      "status": "todo",
+      "tasks": ["epic-2-task-1", "epic-2-task-2", "epic-2-task-3"]
+    },
+    {
+      "id": "epic-3",
+      "title": "Scanner Features",
+      "description": "OWASP Top 10 detection, API exposure, data exposure scanning",
+      "status": "todo",
+      "tasks": ["epic-3-task-1", "epic-3-task-2", "epic-3-task-3", "epic-3-task-4"]
+    },
+    {
+      "id": "epic-4",
+      "title": "Frontend Foundation",
+      "description": "UI components, scan input, progress display, state management",
+      "status": "todo",
+      "tasks": ["epic-4-task-1", "epic-4-task-2", "epic-4-task-3"]
+    },
+    {
+      "id": "epic-5",
+      "title": "Dashboard & Reports",
+      "description": "Results visualization, severity ratings, export functionality",
+      "status": "todo",
+      "tasks": ["epic-5-task-1", "epic-5-task-2", "epic-5-task-3", "epic-5-task-4"]
+    },
+    {
+      "id": "epic-6",
+      "title": "Polish & Build",
+      "description": "Performance optimization, error handling, macOS build",
+      "status": "todo",
+      "tasks": ["epic-6-task-1", "epic-6-task-2", "epic-6-task-3"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "epic-1-task-1",
+      "title": "Initialize Tauri + React project",
+      "description": "Create Tauri 2.x project with React 19 + TypeScript + Vite",
+      "type": "implementation",
+      "priority": "critical",
+      "status": "todo",
+      "parentId": "epic-1",
+      "dependencies": [],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Initialize Tauri project with React 19, TypeScript, Tailwind v4"
+      },
+      "touchedFiles": ["package.json", "src-tauri/Cargo.toml", "src-tauri/tauri.conf.json", "vite.config.ts", "tailwind.config.js"]
+    },
+    {
+      "id": "epic-1-task-2",
+      "title": "Configure Tailwind CSS v4",
+      "description": "Set up Tailwind CSS v4 with Oxide engine and custom theme",
+      "type": "implementation",
+      "priority": "high",
+      "status": "todo",
+      "parentId": "epic-1",
+      "dependencies": ["epic-1-task-1"],
+      "canParallelize": true,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Configure Tailwind CSS v4 with custom theme"
+      },
+      "touchedFiles": ["tailwind.config.js", "src/index.css"]
+    },
+    {
+      "id": "epic-1-task-3",
+      "title": "Set up logging and error handling",
+      "description": "Configure global error boundaries and logging system",
+      "type": "implementation",
+      "priority": "high",
+      "status": "todo",
+      "parentId": "epic-1",
+      "dependencies": ["epic-1-task-1"],
+      "canParallelize": true,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Set up logging and error handling"
+      },
+      "touchedFiles": ["src/main.tsx", "src/App.tsx"]
+    },
+    {
+      "id": "epic-2-task-1",
+      "title": "Implement Rust HTTP client wrapper",
+      "description": "Create HTTP client module using tauri-plugin-http with reqwest",
+      "type": "implementation",
+      "priority": "critical",
+      "status": "todo",
+      "parentId": "epic-2",
+      "dependencies": ["epic-1-task-1"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Implement Rust HTTP client wrapper"
+      },
+      "touchedFiles": ["src-tauri/src/http_client.rs", "src-tauri/src/lib.rs"]
+    },
+    {
+      "id": "epic-2-task-2",
+      "title": "Create scanner engine architecture",
+      "description": "Design and implement scanner engine with passive/active scan support",
+      "type": "implementation",
+      "priority": "critical",
+      "status": "todo",
+      "parentId": "epic-2",
+      "dependencies": ["epic-2-task-1"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Create scanner engine architecture"
+      },
+      "touchedFiles": ["src-tauri/src/scanner/mod.rs", "src-tauri/src/scanner/engine.rs"]
+    },
+    {
+      "id": "epic-2-task-3",
+      "title": "Set up frontend state management",
+      "description": "Configure Zustand store for scan state and results",
+      "type": "implementation",
+      "priority": "high",
+      "status": "todo",
+      "parentId": "epic-2",
+      "dependencies": ["epic-1-task-3"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Set up Zustand state management"
+      },
+      "touchedFiles": ["src/store/scanStore.ts"]
+    },
+    {
+      "id": "epic-3-task-1",
+      "title": "Implement endpoint discovery",
+      "description": "Create crawler/spider to discover API endpoints from URL",
+      "type": "implementation",
+      "priority": "critical",
+      "status": "todo",
+      "parentId": "epic-3",
+      "dependencies": ["epic-2-task-2"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Implement endpoint discovery crawler"
+      },
+      "touchedFiles": ["src-tauri/src/scanner/crawler.rs"]
+    },
+    {
+      "id": "epic-3-task-2",
+      "title": "Implement passive scanner",
+      "description": "Create passive scanner that analyzes responses without modifications",
+      "type": "implementation",
+      "priority": "critical",
+      "status": "todo",
+      "parentId": "epic-3",
+      "dependencies": ["epic-3-task-1"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Implement passive scanner"
+      },
+      "touchedFiles": ["src-tauri/src/scanner/passive.rs"]
+    },
+    {
+      "id": "epic-3-task-3",
+      "title": "Implement active scanner with OWASP detection",
+      "description": "Create active scanner that sends attack payloads for OWASP Top 10",
+      "type": "implementation",
+      "priority": "critical",
+      "status": "todo",
+      "parentId": "epic-3",
+      "dependencies": ["epic-3-task-2"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Implement active scanner with OWASP detection"
+      },
+      "touchedFiles": ["src-tauri/src/scanner/active.rs", "src-tauri/src/scanner/rules/owasp.rs"]
+    },
+    {
+      "id": "epic-3-task-4",
+      "title": "Implement API exposure and data exposure detection",
+      "description": "Add specialized scanners for API exposure and unrestricted data",
+      "type": "implementation",
+      "priority": "high",
+      "status": "todo",
+      "parentId": "epic-3",
+      "dependencies": ["epic-3-task-3"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Implement API and data exposure detection"
+      },
+      "touchedFiles": ["src-tauri/src/scanner/rules/api_exposure.rs", "src-tauri/src/scanner/rules/data_exposure.rs"]
+    },
+    {
+      "id": "epic-4-task-1",
+      "title": "Create scan input component",
+      "description": "Build URL input form with validation",
+      "type": "implementation",
+      "priority": "critical",
+      "status": "todo",
+      "parentId": "epic-4",
+      "dependencies": ["epic-2-task-3"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Create scan input component"
+      },
+      "touchedFiles": ["src/components/ScanInput.tsx"]
+    },
+    {
+      "id": "epic-4-task-2",
+      "title": "Create scan progress component",
+      "description": "Build live progress display with phase indicators",
+      "type": "implementation",
+      "priority": "high",
+      "status": "todo",
+      "parentId": "epic-4",
+      "dependencies": ["epic-4-task-1"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Create scan progress component"
+      },
+      "touchedFiles": ["src/components/ScanProgress.tsx"]
+    },
+    {
+      "id": "epic-4-task-3",
+      "title": "Implement Tauri IPC commands",
+      "description": "Connect frontend to Rust backend via Tauri invoke",
+      "type": "implementation",
+      "priority": "critical",
+      "status": "todo",
+      "parentId": "epic-4",
+      "dependencies": ["epic-4-task-1", "epic-2-task-2"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Implement Tauri IPC commands"
+      },
+      "touchedFiles": ["src-tauri/src/commands.rs", "src/api/scan.ts"]
+    },
+    {
+      "id": "epic-5-task-1",
+      "title": "Create results dashboard",
+      "description": "Build security score dashboard with severity breakdown",
+      "type": "implementation",
+      "priority": "critical",
+      "status": "todo",
+      "parentId": "epic-5",
+      "dependencies": ["epic-4-task-3"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Create results dashboard"
+      },
+      "touchedFiles": ["src/components/Dashboard.tsx"]
+    },
+    {
+      "id": "epic-5-task-2",
+      "title": "Create detailed report viewer",
+      "description": "Build vulnerability detail view with remediation guidance",
+      "type": "implementation",
+      "priority": "critical",
+      "status": "todo",
+      "parentId": "epic-5",
+      "dependencies": ["epic-5-task-1"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Create detailed report viewer"
+      },
+      "touchedFiles": ["src/components/ReportViewer.tsx"]
+    },
+    {
+      "id": "epic-5-task-3",
+      "title": "Implement export functionality",
+      "description": "Add JSON and CSV export for scan results",
+      "type": "implementation",
+      "priority": "medium",
+      "status": "todo",
+      "parentId": "epic-5",
+      "dependencies": ["epic-5-task-2"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Implement export functionality"
+      },
+      "touchedFiles": ["src/utils/export.ts"]
+    },
+    {
+      "id": "epic-5-task-4",
+      "title": "Apply Figma design system",
+      "description": "Apply AGENTIC design system from Figma to UI components",
+      "type": "implementation",
+      "priority": "high",
+      "status": "todo",
+      "parentId": "epic-5",
+      "dependencies": ["epic-5-task-1"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Apply Figma design system"
+      },
+      "touchedFiles": ["src/components/**/*.tsx", "src/index.css"]
+    },
+    {
+      "id": "epic-6-task-1",
+      "title": "Performance optimization",
+      "description": "Optimize scan speed and app startup time",
+      "type": "implementation",
+      "priority": "medium",
+      "status": "todo",
+      "parentId": "epic-6",
+      "dependencies": ["epic-5-task-4"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Performance optimization"
+      },
+      "touchedFiles": []
+    },
+    {
+      "id": "epic-6-task-2",
+      "title": "Error handling and edge cases",
+      "description": "Add comprehensive error handling for all scan scenarios",
+      "type": "implementation",
+      "priority": "high",
+      "status": "todo",
+      "parentId": "epic-6",
+      "dependencies": ["epic-6-task-1"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Error handling and edge cases"
+      },
+      "touchedFiles": ["src/components/**/*.tsx"]
+    },
+    {
+      "id": "epic-6-task-3",
+      "title": "Build macOS application",
+      "description": "Build and verify .app bundle for macOS",
+      "type": "implementation",
+      "priority": "critical",
+      "status": "todo",
+      "parentId": "epic-6",
+      "dependencies": ["epic-6-task-2"],
+      "canParallelize": false,
+      "sdd": {
+        "phase": "implementation",
+        "commands": ["/implement"],
+        "executeCommand": "Build macOS application"
+      },
+      "touchedFiles": []
+    }
+  ]
+}

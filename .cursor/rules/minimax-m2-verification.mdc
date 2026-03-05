@@ -1,0 +1,736 @@
+---
+description: "Verification protocols: StrReplace safety, proportional verification, adversarial self-review, code compilation, UI testing, syntax correctness, and production-readiness checks"
+alwaysApply: false
+---
+
+# Verification Protocols
+
+Code generation is NOT complete until verification passes. This rule defines mandatory verification steps, scaled to effort level.
+
+## Golden Rule
+
+> **Code that isn't verified is code that doesn't work.**
+
+Every piece of generated code must be verified before considering the task complete.
+
+---
+
+## StrReplace Safety Protocol (CRITICAL for all models)
+
+`StrReplace` is the primary editing tool in Cursor. It requires EXACT string matching. This is the #1 source of editing failures for non-native models.
+
+### Mandatory Workflow
+
+```
+1. Read(path="target-file.ts")           ← ALWAYS read first
+2. Identify the exact text to change      ← copy from Read output
+3. StrReplace(
+     path="target-file.ts",
+     old_string="exact text copied from step 2",
+     new_string="your modified version"
+   )
+4. ReadLints(paths=["target-file.ts"])    ← verify no errors introduced
+```
+
+### Common StrReplace Failures and Fixes
+
+| Failure | Cause | Fix |
+|---------|-------|-----|
+| "old_string not found" | Guessed at file contents | Read the file first, copy exact text |
+| "old_string not unique" | Too little context | Include more surrounding lines |
+| Whitespace mismatch | Wrong indentation | Copy exact whitespace from Read output |
+| Edit applied to wrong location | Ambiguous match | Include 3-5 lines of unique context |
+
+### Rules
+
+1. **NEVER call StrReplace without reading the file first** in the current session
+2. **Copy old_string exactly** — including whitespace, indentation, newlines
+3. **If the file was modified since you last read it, read it again**
+4. **For large replacements**, use `Write` to rewrite the entire file instead
+5. **After every StrReplace**, run `ReadLints` on that file
+
+---
+
+## Proportional Verification (Opus 4.6 Pattern)
+
+Verification depth must match the change complexity. Don't run a full test suite for a typo fix.
+
+| Effort Level | Verification Steps |
+|-------------|-------------------|
+| **Instant** | ReadLints on edited file. Done. |
+| **Light** | ReadLints + build check. Quick self-review. |
+| **Deep** | ReadLints + build + tests + adversarial self-review. |
+| **Exhaustive** | ReadLints + build + full tests + browser testing + /verifier subagent. |
+
+---
+
+## Adversarial Self-Review (Pre-Delivery Check)
+
+Before presenting any non-trivial solution (Light level and above), run the inner critic:
+
+```
+<think>
+[SELF-REVIEW]
+
+1. What would break this?
+   - Edge cases: [empty input, null, concurrent access, large data, etc.]
+   - Error paths: [what if network fails, disk full, permissions denied?]
+
+2. What am I assuming that might be wrong?
+   - [List implicit assumptions about environment, data, user behavior]
+
+3. Is there a simpler way?
+   - Am I over-engineering?
+   - Could standard library handle this?
+
+4. Am I solving the right problem?
+   - Does this match what was actually asked?
+
+5. What would a senior engineer critique?
+   - [Name the likely code review feedback]
+</think>
+```
+
+**Skip for Instant-level changes** (typo fixes, simple renames).
+
+---
+
+## Pre-Generation Checks (Deep/Exhaustive Only)
+
+For Instant/Light tasks, skip this — just read the file and make the change.
+
+For Deep/Exhaustive tasks:
+
+```
+<think>
+1. Package versions verified? (for NEW packages only)
+   □ Searched current versions with date
+   □ Checked compatibility
+
+2. CLI tools available?
+   □ Project scaffolding CLI
+   □ Component generation CLI
+
+3. Project patterns understood?
+   □ Read existing code for conventions
+   □ Identified import/error handling patterns
+
+4. IDE project files required?
+   □ If Xcode/VS/.sln needed → REFUSE, instruct user
+</think>
+```
+
+---
+
+## Language-Specific Syntax Reference
+
+### JavaScript / TypeScript
+
+**Correct Patterns:**
+```typescript
+// Variable declarations
+const immutable = 'value';
+let mutable = 'value';
+// NEVER: var
+
+// Async/await
+async function fetchData(): Promise<Data> {
+  const response = await fetch('/api');
+  return await response.json();
+}
+// NEVER: awiat, asyc, fecth
+
+// Arrow functions
+const handler = (event: Event) => {
+  event.preventDefault();
+};
+// NEVER: evnet, prevetDefault
+
+// Destructuring
+const { name, age } = user;
+const [first, ...rest] = items;
+
+// Template literals
+const message = `Hello, ${name}!`;
+// NEVER: 'Hello, ' + name + '!'
+
+// Optional chaining
+const value = obj?.nested?.property;
+// NEVER: obj && obj.nested && obj.nested.property
+```
+
+**Common Typos to Avoid:**
+| Wrong | Correct |
+|-------|---------|
+| `awiat` | `await` |
+| `asyc` | `async` |
+| `fucntion` | `function` |
+| `reutrn` | `return` |
+| `conts` | `const` |
+| `lenght` | `length` |
+| `calback` | `callback` |
+| `respone` | `response` |
+| `requst` | `request` |
+| `exprot` | `export` |
+| `improt` | `import` |
+| `undefiend` | `undefined` |
+
+### React / JSX / TSX
+
+**Correct Patterns:**
+```tsx
+// Functional component
+export function Component({ prop }: { prop: string }) {
+  return <div className="container">{prop}</div>;
+}
+// NEVER: class=, fucntion, reutrn
+
+// Hooks
+const [state, setState] = useState<string>('');
+const ref = useRef<HTMLDivElement>(null);
+useEffect(() => {
+  // effect
+  return () => { /* cleanup */ };
+}, [dependency]);
+// NEVER: usestate, useeffect, useRef (case matters!)
+
+// Event handlers
+<button onClick={(e) => handleClick(e)}>
+  Click me
+</button>
+// NEVER: onclick, onClick={handleClick()} (don't call the function)
+
+// Conditional rendering
+{isVisible && <Component />}
+{condition ? <A /> : <B />}
+// NEVER: {isVisible & <Component />}
+
+// Lists with keys
+{items.map((item) => (
+  <Item key={item.id} data={item} />
+))}
+// NEVER: forget key prop
+```
+
+**Common React Typos to Avoid:**
+| Wrong | Correct |
+|-------|---------|
+| `class=` | `className=` |
+| `classname=` | `className=` |
+| `onclick` | `onClick` |
+| `onlcick` | `onClick` |
+| `onchange` | `onChange` |
+| `usestate` | `useState` |
+| `useEffect` | `useEffect` (correct) |
+| `useeffect` | `useEffect` |
+| `useMemo` | `useMemo` (correct) |
+| `useCallBack` | `useCallback` |
+| `<Component>` without closing | `<Component />` or `<Component></Component>` |
+
+### Python
+
+**Correct Patterns:**
+```python
+# Function definition
+def function_name(param: str, optional: int = 10) -> bool:
+    """Docstring describing the function."""
+    return True
+
+# NEVER: def fucntion, retrun, Ture, Flase
+
+# Async function
+async def fetch_data(url: str) -> dict:
+    async with aiohttp.ClientSession() as session:
+        response = await session.get(url)
+        return await response.json()
+
+# NEVER: asyc def, awiat, sesion
+
+# Class definition
+class MyClass:
+    def __init__(self, value: str) -> None:
+        self.value = value
+    
+    def method(self) -> str:
+        return self.value
+
+# NEVER: def __int__, slef, calss
+
+# List/dict comprehensions
+squares = [x ** 2 for x in range(10)]
+mapping = {k: v for k, v in items.items()}
+
+# Context managers
+with open('file.txt', 'r') as f:
+    content = f.read()
+```
+
+**Common Python Typos to Avoid:**
+| Wrong | Correct |
+|-------|---------|
+| `def __int__` | `def __init__` |
+| `slef` | `self` |
+| `calss` | `class` |
+| `retrun` | `return` |
+| `Ture` | `True` |
+| `Flase` | `False` |
+| `exept` | `except` |
+| `finaly` | `finally` |
+| `improt` | `import` |
+| `pritn` | `print` |
+| `lsit` | `list` |
+| `dcit` | `dict` |
+
+### Go
+
+**Correct Patterns:**
+```go
+// Function with error handling
+func ProcessData(data []byte) (Result, error) {
+    if len(data) == 0 {
+        return Result{}, errors.New("empty data")
+    }
+    // process
+    return result, nil
+}
+
+// NEVER: fucn, reutrn, erorr
+
+// HTTP handler
+func (s *Server) HandleRequest(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodGet {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+}
+
+// NEVER: http.ReponseWriter, http.Requst
+
+// Goroutine with channel
+ch := make(chan string, 10)
+go func() {
+    ch <- "message"
+}()
+result := <-ch
+
+// Defer for cleanup
+file, err := os.Open("file.txt")
+if err != nil {
+    return err
+}
+defer file.Close()
+```
+
+**Common Go Typos to Avoid:**
+| Wrong | Correct |
+|-------|---------|
+| `fucn` | `func` |
+| `reutrn` | `return` |
+| `erorr` | `error` |
+| `stirng` | `string` |
+| `http.ReponseWriter` | `http.ResponseWriter` |
+| `http.Requst` | `http.Request` |
+| `contxt` | `context` |
+| `chanell` | `channel` |
+
+### Rust
+
+**Correct Patterns:**
+```rust
+// Function with Result
+fn process_data(data: &[u8]) -> Result<Value, Error> {
+    if data.is_empty() {
+        return Err(Error::EmptyData);
+    }
+    Ok(value)
+}
+
+// NEVER: fn fucntion, reutrn, Resutl
+
+// Struct with derive
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Config {
+    pub name: String,
+    pub value: i32,
+}
+
+// Match expression
+match result {
+    Ok(value) => println!("Success: {}", value),
+    Err(e) => eprintln!("Error: {}", e),
+}
+
+// Option handling
+let value = some_option.unwrap_or_default();
+let value = some_option.map(|v| v.process());
+
+// Async with tokio
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let response = reqwest::get("https://api.example.com").await?;
+    Ok(())
+}
+```
+
+**Common Rust Typos to Avoid:**
+| Wrong | Correct |
+|-------|---------|
+| `fn fucntion` | `fn function_name` |
+| `reutrn` | `return` |
+| `Resutl` | `Result` |
+| `Stirng` | `String` |
+| `pulic` | `pub` |
+| `sturct` | `struct` |
+| `imple` | `impl` |
+| `mutalbe` | `mut` |
+
+### Swift
+
+**Correct Patterns:**
+```swift
+// Function with throws
+func fetchData(from url: URL) async throws -> Data {
+    let (data, response) = try await URLSession.shared.data(from: url)
+    guard let httpResponse = response as? HTTPURLResponse,
+          httpResponse.statusCode == 200 else {
+        throw NetworkError.invalidResponse
+    }
+    return data
+}
+
+// NEVER: fucn, retrun, thorws, awiat
+
+// Struct/Class
+struct User: Codable {
+    let id: UUID
+    var name: String
+    var email: String
+}
+
+// SwiftUI View
+struct ContentView: View {
+    @State private var isLoading = false
+    
+    var body: some View {
+        VStack {
+            if isLoading {
+                ProgressView()
+            } else {
+                Text("Hello, World!")
+            }
+        }
+    }
+}
+
+// NEVER: @Sate, strcut, VSTack
+```
+
+**Common Swift Typos to Avoid:**
+| Wrong | Correct |
+|-------|---------|
+| `fucn` | `func` |
+| `retrun` | `return` |
+| `thorws` | `throws` |
+| `awiat` | `await` |
+| `strcut` | `struct` |
+| `@Sate` | `@State` |
+| `@Bindng` | `@Binding` |
+| `VSTack` | `VStack` |
+| `HSTack` | `HStack` |
+
+---
+
+## ReadLints Tool - Linter Error Checking
+
+The `ReadLints` tool reads linter errors from the workspace. Use it after every file edit.
+
+### Usage
+
+```
+→ ReadLints(paths=["src/components/Button.tsx"])
+```
+
+### Parameters
+- `paths`: Array of file or directory paths to check
+
+### Best Practices
+
+1. **Only check files you've edited** - Don't scan entire codebase
+2. **Check immediately after edits** - Catch errors early
+3. **Fix errors before proceeding** - Don't accumulate lint errors
+4. **Use specific paths** - More efficient than broad scans
+
+### Example Workflow
+
+```
+// 1. Edit a file
+→ StrReplace(path="src/utils.ts", ...)
+
+// 2. Check for linter errors
+→ ReadLints(paths=["src/utils.ts"])
+
+// 3. If errors found, fix them
+→ StrReplace(path="src/utils.ts", ...)
+
+// 4. Verify fix
+→ ReadLints(paths=["src/utils.ts"])
+```
+
+---
+
+## Post-Generation Verification
+
+### Effort-Scaled Verification
+
+**Instant**: Just lint the edited file.
+```
+→ ReadLints(paths=["path/to/edited/file"])
+```
+
+**Light**: Lint + build + quick self-review.
+```
+→ ReadLints(paths=["path/to/edited/file"])
+→ Shell(command="npm run build", description="Build check")  // or equivalent
+```
+
+**Deep/Exhaustive**: Full verification with self-review.
+```
+<think>
+[POST-GENERATION VERIFICATION]
+
+1. Syntax: No typos, balanced brackets, correct quotes
+2. Logic: Variables declared, functions called correctly, error handling present
+3. Framework: Correct imports, proper conventions followed
+4. Self-review: Edge cases handled? Assumptions valid? Simpler approach?
+</think>
+```
+
+### Build Verification Commands
+
+**Node.js/JavaScript:**
+```
+→ Shell(command="npm install", description="Install dependencies")
+→ Shell(command="npm run build", description="Build project")
+→ Shell(command="npm run lint", description="Run linter")
+→ ReadLints(paths=["src/"])
+```
+
+**Python:**
+```
+→ Shell(command="pip install -r requirements.txt", description="Install dependencies")
+→ Shell(command="python -m py_compile main.py", description="Check syntax")
+→ Shell(command="python -m pytest", description="Run tests")
+```
+
+**Go:**
+```
+→ Shell(command="go build ./...", description="Build Go project")
+→ Shell(command="go test ./...", description="Run Go tests")
+→ Shell(command="go vet ./...", description="Vet Go code")
+```
+
+**Rust:**
+```
+→ Shell(command="cargo check", description="Check Rust code")
+→ Shell(command="cargo build", description="Build Rust project")
+→ Shell(command="cargo test", description="Run Rust tests")
+→ Shell(command="cargo clippy", description="Run Clippy lints")
+```
+
+**C/C++:**
+```
+→ Shell(command="make", description="Build with make")
+→ Shell(command="make test", description="Run tests")
+```
+
+---
+
+## UI Component Verification
+
+### Chart.js Verification Checklist
+
+```
+□ Parent container has fixed height
+□ Position relative on container
+□ Canvas has no explicit height (let Chart.js handle it)
+□ Options include responsive: true
+□ Options include maintainAspectRatio: true OR container has height
+```
+
+**Correct Pattern:**
+```html
+<div style="height: 400px; position: relative;">
+  <canvas id="myChart"></canvas>
+</div>
+
+<script>
+new Chart(ctx, {
+  options: {
+    responsive: true,
+    maintainAspectRatio: false, // OK because container has fixed height
+  }
+});
+</script>
+```
+
+### Form Verification Checklist
+
+```
+□ All inputs have type attribute
+□ Required fields have required attribute
+□ Email fields have email type
+□ Pattern validation where needed
+□ Error messages with aria-describedby
+□ Labels with proper for/id association
+□ Submit button type="submit"
+```
+
+### Interactive Element Verification
+
+```
+□ onclick handlers reference existing functions
+□ Event listeners attached after DOM ready
+□ Modal/dialog functions defined before use
+□ State management initialized
+□ Cleanup on component unmount (React/Vue)
+```
+
+### Browser Testing Protocol (Deep/Exhaustive Only)
+
+After generating UI code at Deep/Exhaustive effort level:
+
+```
+// 1. Start dev server if needed
+→ Shell(command="npm run dev", is_background=true, description="Start dev server")
+
+// 2. Wait for server to start
+→ browser_wait_for(time=3)
+
+// 3. Navigate to page, then lock
+→ browser_navigate(url="http://localhost:3000")
+→ browser_lock
+
+// 4. Get page snapshot
+→ browser_snapshot()
+
+// 5. Check console for errors
+→ browser_console_messages()
+
+// 6. Test interactive elements
+→ browser_click(element="Submit button", ref="button-submit")
+
+// 7. Verify result
+→ browser_snapshot()
+
+// 8. Unlock when done
+→ browser_unlock
+```
+
+---
+
+## IDE Project File Handling
+
+### NEVER Generate These Files
+
+| File Type | Action |
+|-----------|--------|
+| `.xcodeproj/*` | REFUSE - instruct user to use Xcode |
+| `.xcworkspace/*` | REFUSE - instruct user to use Xcode |
+| `*.pbxproj` | REFUSE - will be corrupted |
+| `*.sln` | REFUSE - instruct user to use Visual Studio |
+| `*.csproj` | REFUSE (complex ones) - simple ones may be OK |
+| `*.gradle` (complex) | REFUSE - instruct user to use Android Studio |
+
+### Proper Response When Asked
+
+Explain clearly that these files have complex formats AI cannot reliably produce, then provide the manual steps:
+
+1. Open Xcode/VS/Android Studio
+2. Create the project using the IDE's project wizard
+3. Once created, offer to help with the actual code
+
+Do NOT attempt to generate these files, even partially.
+
+---
+
+## Error Recovery Protocol
+
+### When Verification Fails
+
+Reason genuinely about the error — don't fill in a template:
+
+```
+<think>
+What happened: [the actual error]
+Why I think it happened: [hypothesis — typo? version mismatch? missing dep? logic error?]
+Confidence: [certain / likely / uncertain]
+Fix: [specific change]
+</think>
+
+[Apply fix]
+[Verify again]
+
+<think>
+Did it work? If no — was my hypothesis wrong, or was the fix insufficient?
+</think>
+```
+
+After 3-4 failed attempts at the same error, escalate to web search (see core rules).
+
+### Common Error Patterns
+
+| Error Pattern | Likely Cause | Fix |
+|---------------|--------------|-----|
+| "Cannot find module X" | Missing dependency | `npm install X` |
+| "X is not defined" | Typo or missing import | Check spelling, add import |
+| "Cannot read property of undefined" | Null/undefined access | Add optional chaining |
+| "Type error: expected X got Y" | Type mismatch | Fix type annotations |
+| "Unexpected token" | Syntax error | Check for typos, brackets |
+| "ENOENT: no such file" | Wrong path | Verify file path |
+
+---
+
+## Verification Summary Checklist
+
+Before marking ANY task complete (scale to effort level):
+
+### Instant
+```
+□ Linter passes on edited file
+```
+
+### Light
+```
+□ Linter passes on edited file
+□ Build succeeds
+□ Adversarial self-review performed
+```
+
+### Deep
+```
+□ Package versions checked for NEW dependencies
+□ CLI tools used where available
+□ Linter passes on all edited files
+□ Build succeeds
+□ Relevant tests pass
+□ Adversarial self-review performed
+□ Error handling is present
+```
+
+### Exhaustive
+```
+□ Package versions checked for NEW dependencies
+□ CLI tools used where available
+□ Syntax verified against language reference
+□ No IDE project files generated manually
+□ Build succeeds
+□ All relevant tests pass
+□ UI renders correctly (browser tools, if applicable)
+□ Interactive elements work (if applicable)
+□ Console shows no errors
+□ Error handling is present
+□ Adversarial self-review performed
+□ /verifier subagent confirms completion
+```
+
+**If the required checkboxes for the effort level are not verified, the task is NOT complete.**

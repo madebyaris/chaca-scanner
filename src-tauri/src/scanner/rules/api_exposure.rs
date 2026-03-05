@@ -1,0 +1,72 @@
+use crate::Severity;
+
+pub fn get_api_exposure_checks() -> Vec<(&'static str, Severity)> {
+    vec![
+        // Critical: debug endpoints that should never be public
+        ("/debug/pprof", Severity::High),
+        ("/debug/vars", Severity::High),
+        ("/debug", Severity::High),
+
+        // High: admin, internal, private endpoints
+        ("/api/admin", Severity::High),
+        ("/api/internal", Severity::High),
+        ("/api/private", Severity::High),
+        ("/api/debug", Severity::High),
+        ("/api/config", Severity::High),
+        ("/api/settings", Severity::High),
+        ("/api/env", Severity::High),
+        ("/env", Severity::High),
+        ("/config", Severity::High),
+
+        // Medium: documentation, introspection, management
+        ("/actuator", Severity::Medium),
+        ("/actuator/health", Severity::Medium),
+        ("/actuator/env", Severity::Medium),
+        ("/actuator/beans", Severity::Medium),
+        ("/actuator/mappings", Severity::Medium),
+        ("/actuator/configprops", Severity::Medium),
+        ("/swagger", Severity::Medium),
+        ("/swagger-ui", Severity::Medium),
+        ("/swagger-ui.html", Severity::Medium),
+        ("/swagger.json", Severity::Medium),
+        ("/swagger/v1/swagger.json", Severity::Medium),
+        ("/openapi", Severity::Medium),
+        ("/openapi.json", Severity::Medium),
+        ("/openapi.yaml", Severity::Medium),
+        ("/api-docs", Severity::Medium),
+        ("/docs", Severity::Medium),
+        ("/redoc", Severity::Medium),
+        ("/graphiql", Severity::Medium),
+        ("/altair", Severity::Medium),
+        ("/api/graphql/playground", Severity::Medium),
+        ("/api/schema", Severity::Medium),
+        ("/metrics", Severity::Medium),
+        ("/prometheus", Severity::Medium),
+        ("/console", Severity::Medium),
+        ("/wp-json/wp/v2/users", Severity::Medium),
+        ("/.well-known/openid-configuration", Severity::Medium),
+        ("/trace", Severity::Medium),
+
+        // Low: standard API paths and discovery
+        ("/api", Severity::Low),
+        ("/api/v1", Severity::Low),
+        ("/api/v2", Severity::Low),
+        ("/api/v3", Severity::Low),
+        ("/api/v4", Severity::Low),
+        ("/graphql", Severity::Low),
+        ("/wp-json", Severity::Low),
+        ("/sitemap.xml", Severity::Low),
+        ("/crossdomain.xml", Severity::Low),
+        ("/clientaccesspolicy.xml", Severity::Low),
+        ("/.well-known/security.txt", Severity::Low),
+
+        // Info: health/status (expected to be public)
+        ("/health", Severity::Info),
+        ("/healthz", Severity::Info),
+        ("/readyz", Severity::Info),
+        ("/livez", Severity::Info),
+        ("/status", Severity::Info),
+        ("/info", Severity::Info),
+        ("/version", Severity::Info),
+    ]
+}
