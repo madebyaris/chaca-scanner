@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils"
 import { useScanStore, type View } from "@/store/scanStore"
 import { useSettingsStore, type SettingsTab } from "@/store/settingsStore"
-import { PanelLeft, MoreHorizontal } from "lucide-react"
+import { useLicenseStore } from "@/store/licenseStore"
+import { PanelLeft, MoreHorizontal, Crown } from "lucide-react"
 
 interface NavItem {
   label: string
@@ -37,6 +38,7 @@ const navSections: NavSection[] = [
       { label: "SCAN SETTINGS", view: "settings", settingsTab: "network" },
       { label: "OWASP RULES", view: "settings", settingsTab: "owasp" },
       { label: "EXPORT SETTINGS", view: "settings", settingsTab: "export" },
+      { label: "LICENSE", view: "settings", settingsTab: "license" },
     ],
   },
   {
@@ -98,6 +100,7 @@ function LogoIcon() {
 export function AppSidebar() {
   const { view, setView, sidebarCollapsed, toggleSidebar } = useScanStore()
   const { activeTab: currentSettingsTab, setActiveTab } = useSettingsStore()
+  const isPro = useLicenseStore((s) => s.isPro)
 
   return (
     <aside
@@ -175,15 +178,28 @@ export function AppSidebar() {
       <div className="border-t border-[#e5e5e5] px-4 py-3 flex items-center justify-between">
         {!sidebarCollapsed ? (
           <>
-            <span className="text-[12px] text-[#191919] font-mono">Chaca v0.5</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] text-[#191919] font-mono">Chaca v0.5</span>
+              {isPro() && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[8px] font-mono tracking-widest font-bold bg-gradient-to-r from-[#c4a44a] to-[#a08530] text-white">
+                  <Crown size={7} />
+                  PRO
+                </span>
+              )}
+            </div>
             <button className="text-[#8f8f8f] hover:text-[#191919] transition-colors" aria-label="More options">
               <MoreHorizontal size={16} />
             </button>
           </>
         ) : (
-          <button className="text-[#8f8f8f] hover:text-[#191919] transition-colors mx-auto" aria-label="More options">
-            <MoreHorizontal size={16} />
-          </button>
+          <div className="flex flex-col items-center gap-1">
+            {isPro() && (
+              <Crown size={10} className="text-[#c4a44a]" />
+            )}
+            <button className="text-[#8f8f8f] hover:text-[#191919] transition-colors" aria-label="More options">
+              <MoreHorizontal size={16} />
+            </button>
+          </div>
         )}
       </div>
     </aside>

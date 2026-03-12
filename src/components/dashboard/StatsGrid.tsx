@@ -37,7 +37,7 @@ interface StatsGridProps {
 export function StatsGrid({ result }: StatsGridProps) {
   const vulnCount = result.vulnerabilities.length
   const apiCount = result.api_exposures.length
-  const dataCount = result.data_exposures.length
+  const endpointCount = result.metrics?.endpoint_total ?? result.inventory?.length ?? 0
   const duration = result.scan_duration_ms
 
   const durationStr =
@@ -54,7 +54,7 @@ export function StatsGrid({ result }: StatsGridProps) {
         valueClass={vulnCount > 0 ? worstSeverityColor(result) : "text-[#288034]"}
       />
       <StatCell label="API Exposures" value={String(apiCount)} />
-      <StatCell label="Data Exposures" value={String(dataCount)} />
+      <StatCell label="Endpoints" value={String(endpointCount)} />
       <StatCell label="Scan Duration" value={durationStr} unit={durationUnit} />
     </div>
   )

@@ -556,26 +556,5 @@ pub fn analyze_response(
         }
     }
 
-    let data_findings = super::rules::data_exposure::scan_body(body, config);
-    for finding in data_findings {
-        vulnerabilities.push(Vulnerability {
-            id: format!("passive-data-{}", finding.pattern_name),
-            title: format!("Sensitive Data in Response: {}", finding.data_type),
-            description: format!(
-                "Detected {} pattern in response body",
-                finding.data_type
-            ),
-            severity: finding.severity,
-            confidence: finding.confidence,
-            category: "API3:2023 - Broken Object Property Level Authorization".to_string(),
-            location: url.to_string(),
-            evidence: format!("Matched: {}", finding.matched_value),
-            impact: "Sensitive data may be exposed to unauthorized parties".to_string(),
-            remediation: "Review and sanitize API responses; remove sensitive data from public endpoints".to_string(),
-            affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
-        });
-    }
-
     vulnerabilities
 }

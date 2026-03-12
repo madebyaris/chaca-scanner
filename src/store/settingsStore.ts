@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { LazyStore } from '@tauri-apps/plugin-store';
-import type { Severity } from './scanStore';
+import type { DiscoveryMode, Severity } from './scanStore';
 
-export type SettingsTab = 'network' | 'crawling' | 'passive' | 'active' | 'owasp' | 'export';
+export type SettingsTab = 'network' | 'crawling' | 'passive' | 'active' | 'owasp' | 'export' | 'license';
 
 export interface HeaderPair {
   key: string;
@@ -18,10 +18,14 @@ export interface ScanSettings {
   rateLimitRps: number;
 
   // Crawling
+  discoveryMode: DiscoveryMode;
   maxCrawlDepth: number;
   maxEndpoints: number;
   followRobotsTxt: boolean;
+  scopeAllowlist: string[];
+  scopeDenylist: string[];
   customApiPaths: string[];
+  artifactInput: string;
 
   // Passive scan toggles
   passiveServerHeader: boolean;
@@ -57,6 +61,8 @@ export interface ScanSettings {
   activeCorsReflection: boolean;
   activeXssEnhanced: boolean;
   activeCsrfVerify: boolean;
+  activeGraphql: boolean;
+  activeResourceConsumption: boolean;
   bolaDiffThreshold: number;
   authBypassDiffThreshold: number;
 
@@ -79,22 +85,29 @@ export interface ScanSettings {
   scoreLowCap: number;
 
   // Export
-  defaultExportFormat: 'json' | 'csv';
+  defaultExportFormat: 'json' | 'csv' | 'sarif';
   autoExportOnComplete: boolean;
   historyLimit: number;
 }
 
+const DEFAULT_CHROME_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
+
 export const DEFAULT_SETTINGS: ScanSettings = {
   httpTimeoutSecs: 30,
   acceptInvalidCerts: true,
-  customUserAgent: '',
+  customUserAgent: DEFAULT_CHROME_USER_AGENT,
   customHeaders: [],
   rateLimitRps: 0,
 
+  discoveryMode: 'merged',
   maxCrawlDepth: 1,
   maxEndpoints: 100,
   followRobotsTxt: true,
+  scopeAllowlist: [],
+  scopeDenylist: [],
   customApiPaths: [],
+  artifactInput: '',
 
   passiveServerHeader: true,
   passiveXPoweredBy: true,
@@ -128,6 +141,8 @@ export const DEFAULT_SETTINGS: ScanSettings = {
   activeCorsReflection: true,
   activeXssEnhanced: true,
   activeCsrfVerify: true,
+  activeGraphql: true,
+  activeResourceConsumption: true,
   bolaDiffThreshold: 50,
   authBypassDiffThreshold: 100,
 
@@ -160,10 +175,14 @@ export function toScanConfig(s: ScanSettings) {
     custom_user_agent: s.customUserAgent,
     custom_headers: s.customHeaders.filter(h => h.key.trim() !== ''),
     rate_limit_rps: s.rateLimitRps,
+    discovery_mode: s.discoveryMode,
     max_crawl_depth: s.maxCrawlDepth,
     max_endpoints: s.maxEndpoints,
     follow_robots_txt: s.followRobotsTxt,
+    scope_allowlist: s.scopeAllowlist.filter(p => p.trim() !== ''),
+    scope_denylist: s.scopeDenylist.filter(p => p.trim() !== ''),
     custom_api_paths: s.customApiPaths.filter(p => p.trim() !== ''),
+    artifact_input: s.artifactInput,
     passive_server_header: s.passiveServerHeader,
     passive_x_powered_by: s.passiveXPoweredBy,
     passive_json_api: s.passiveJsonApi,
@@ -195,6 +214,8 @@ export function toScanConfig(s: ScanSettings) {
     active_cors_reflection: s.activeCorsReflection,
     active_xss_enhanced: s.activeXssEnhanced,
     active_csrf_verify: s.activeCsrfVerify,
+    active_graphql: s.activeGraphql,
+    active_resource_consumption: s.activeResourceConsumption,
     bola_diff_threshold: s.bolaDiffThreshold,
     auth_bypass_diff_threshold: s.authBypassDiffThreshold,
     entropy_threshold: s.entropyThreshold,

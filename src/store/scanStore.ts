@@ -4,9 +4,48 @@ export type ScanType = 'passive' | 'active' | 'full';
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
 export type Confidence = 'confirmed' | 'firm' | 'tentative';
 export type CmsType = 'wordpress' | 'drupal' | 'joomla' | 'shopify' | 'magento' | 'unknown';
+export type DiscoveryMode = 'crawl' | 'artifact' | 'merged';
+
+export interface EvidenceItem {
+  kind: string;
+  label: string;
+  value: string;
+}
+
+export interface AuthState {
+  mode: string;
+  applied: boolean;
+  status: string;
+  details: string;
+}
+
+export interface InventorySummaryItem {
+  url: string;
+  method: string;
+  source: string;
+  tags: string[];
+  parameter_names: string[];
+  last_status?: number | null;
+}
+
+export interface ScanMetrics {
+  request_count: number;
+  endpoint_total: number;
+  active_candidate_total: number;
+  passive_vulnerability_count: number;
+  active_vulnerability_count: number;
+  api_exposure_count: number;
+  data_exposure_count: number;
+  artifact_seed_count: number;
+  authenticated_request_count: number;
+  confirmed_finding_count: number;
+  tentative_finding_count: number;
+}
 
 export interface Vulnerability {
   id: string;
+  rule_id?: string;
+  fingerprint?: string;
   title: string;
   description: string;
   severity: Severity;
@@ -17,11 +56,13 @@ export interface Vulnerability {
   impact: string;
   remediation: string;
   affected_endpoints: string[];
+  evidence_items?: EvidenceItem[];
   references?: string[];
   cwe?: string;
 }
 
 export interface ApiExposure {
+  fingerprint?: string;
   endpoint: string;
   method: string;
   description: string;
@@ -29,11 +70,13 @@ export interface ApiExposure {
 }
 
 export interface DataExposure {
+  fingerprint?: string;
   field: string;
   data_type: string;
   location: string;
   severity: Severity;
   confidence: Confidence;
+  matched_value?: string;
 }
 
 export interface CookieInfo {
@@ -90,6 +133,9 @@ export interface ScanResult {
   scan_duration_ms: number;
   cms_detected: CmsType | null;
   target_info?: TargetInfo | null;
+  auth_state?: AuthState | null;
+  inventory?: InventorySummaryItem[];
+  metrics?: ScanMetrics | null;
   timestamp?: number;
 }
 
@@ -98,6 +144,8 @@ export interface ScanProgress {
   current: number;
   total: number;
   message: string;
+  detail?: string;
+  findings_so_far?: number;
 }
 
 export type View =
@@ -112,11 +160,20 @@ export type View =
   | 'about'
   | 'documentation';
 
+export interface ActivityLogEntry {
+  timestamp: number;
+  phase: string;
+  message: string;
+  detail?: string;
+}
+
 interface ScanState {
   url: string;
   scanType: ScanType;
   isScanning: boolean;
   progress: ScanProgress | null;
+  activityLog: ActivityLogEntry[];
+  scanStartedAt: number | null;
   result: ScanResult | null;
   error: string | null;
   view: View;
@@ -127,7 +184,7 @@ interface ScanState {
   setScanType: (type: ScanType) => void;
   startScan: () => void;
   setProgress: (progress: ScanProgress) => void;
-  setResult: (result: ScanResult) => void;
+  setResult: (result: ScanResult, historyLimit?: number) => void;
   setError: (error: string) => void;
   setView: (view: View) => void;
   loadResult: (result: ScanResult) => void;
@@ -141,6 +198,8 @@ export const useScanStore = create<ScanState>((set) => ({
   scanType: 'full',
   isScanning: false,
   progress: null,
+  activityLog: [],
+  scanStartedAt: null,
   result: null,
   error: null,
   view: 'new-scan',
@@ -152,18 +211,44 @@ export const useScanStore = create<ScanState>((set) => ({
   startScan: () => set({
     isScanning: true,
     progress: { phase: 'initializing', current: 0, total: 100, message: 'Initializing scan...' },
+    activityLog: [{ timestamp: Date.now(), phase: 'initializing', message: 'Scan started' }],
+    scanStartedAt: Date.now(),
     result: null,
     error: null,
     view: 'scanning',
   }),
-  setProgress: (progress) => set({ progress }),
-  setResult: (result) => set((state) => ({
-    isScanning: false,
-    progress: null,
-    result: { ...result, timestamp: Date.now() },
-    view: 'dashboard',
-    history: [...state.history, { ...result, timestamp: Date.now() }].slice(-50),
-  })),
+  setProgress: (progress) => set((state) => {
+    const lastEntry = state.activityLog[state.activityLog.length - 1];
+    const isDuplicate = lastEntry
+      && lastEntry.phase === progress.phase
+      && lastEntry.message === progress.message
+      && lastEntry.detail === (progress.detail || undefined);
+
+    const newLog = isDuplicate
+      ? state.activityLog
+      : [
+          ...state.activityLog,
+          {
+            timestamp: Date.now(),
+            phase: progress.phase,
+            message: progress.message,
+            detail: progress.detail || undefined,
+          },
+        ].slice(-200);
+
+    return { progress, activityLog: newLog };
+  }),
+  setResult: (result, historyLimit = 50) => set((state) => {
+    const timestamp = Date.now();
+    const stamped = { ...result, timestamp };
+    return {
+      isScanning: false,
+      progress: null,
+      result: stamped,
+      view: 'dashboard',
+      history: [...state.history, stamped].slice(-historyLimit),
+    };
+  }),
   setError: (error) => set({
     isScanning: false,
     progress: null,
@@ -179,6 +264,8 @@ export const useScanStore = create<ScanState>((set) => ({
     scanType: 'full',
     isScanning: false,
     progress: null,
+    activityLog: [],
+    scanStartedAt: null,
     result: null,
     error: null,
     view: 'new-scan',

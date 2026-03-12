@@ -1,10 +1,14 @@
-use crate::{CookieInfo, HeaderPair, TargetInfo};
+use crate::{CookieInfo, HeaderPair, ScanConfig, TargetInfo};
+use base64::Engine;
 use std::net::ToSocketAddrs;
 use tracing::info;
 
+use super::domain::{HttpMethod, RequestContext, ScanRuntime};
+
 pub async fn collect_target_info(
     url: &str,
-    client: &reqwest::Client,
+    runtime: &ScanRuntime,
+    config: &ScanConfig,
 ) -> TargetInfo {
     let mut info = TargetInfo::default();
     let start = std::time::Instant::now();
@@ -23,20 +27,25 @@ pub async fn collect_target_info(
         let ips: Vec<String> = addrs.map(|a| a.ip().to_string()).collect();
         let unique: Vec<String> = ips.into_iter().collect::<std::collections::HashSet<_>>().into_iter().collect();
         info.ip_addresses = unique;
+        info.dns_records = info.ip_addresses.clone();
     }
 
     // Build a no-redirect client to capture redirect chain
     let redir_client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .timeout(std::time::Duration::from_secs(15))
-        .danger_accept_invalid_certs(true)
+        .danger_accept_invalid_certs(config.accept_invalid_certs)
         .build()
-        .unwrap_or_else(|_| client.clone());
+        .unwrap_or_else(|_| runtime.client().clone());
 
     let mut current_url = url.to_string();
     let mut chain = vec![current_url.clone()];
     for _ in 0..10 {
-        match redir_client.get(&current_url).send().await {
+        match RequestContext::from_scan_config(HttpMethod::Get, &current_url, config)
+            .into_builder(&redir_client)
+            .send()
+            .await
+        {
             Ok(resp) => {
                 if resp.status().is_redirection() {
                     if let Some(loc) = resp.headers().get("location") {
@@ -65,7 +74,14 @@ pub async fn collect_target_info(
 
     // Main request for header analysis
     info!("Collecting target intelligence for {}", url);
-    let response = match client.get(url).send().await {
+    let response = match runtime
+        .execute_request(
+            RequestContext::from_scan_config(HttpMethod::Get, url, config)
+                .with_label("recon")
+                .into_builder(runtime.client()),
+        )
+        .await
+    {
         Ok(r) => r,
         Err(_) => {
             info.response_time_ms = start.elapsed().as_millis() as u64;
@@ -134,14 +150,57 @@ pub async fn collect_target_info(
     info!("Checking well-known files for {}", url);
     let base = url.trim_end_matches('/');
 
-    if let Ok(resp) = client.get(&format!("{}/robots.txt", base)).send().await {
+    if let Ok(resp) = runtime
+        .execute_request(
+            RequestContext::from_scan_config(HttpMethod::Get, format!("{}/robots.txt", base), config)
+                .with_label("robots")
+                .into_builder(runtime.client()),
+        )
+        .await
+    {
         info.robots_txt_exists = resp.status().is_success();
     }
-    if let Ok(resp) = client.get(&format!("{}/sitemap.xml", base)).send().await {
+    if let Ok(resp) = runtime
+        .execute_request(
+            RequestContext::from_scan_config(HttpMethod::Get, format!("{}/sitemap.xml", base), config)
+                .with_label("sitemap")
+                .into_builder(runtime.client()),
+        )
+        .await
+    {
         info.sitemap_exists = resp.status().is_success();
     }
-    if let Ok(resp) = client.get(&format!("{}/.well-known/security.txt", base)).send().await {
+    if let Ok(resp) = runtime
+        .execute_request(
+            RequestContext::from_scan_config(
+                HttpMethod::Get,
+                format!("{}/.well-known/security.txt", base),
+                config,
+            )
+            .with_label("security_txt")
+            .into_builder(runtime.client()),
+        )
+        .await
+    {
         info.security_txt_exists = resp.status().is_success();
+    }
+
+    if let Ok(resp) = runtime
+        .execute_request(
+            RequestContext::from_scan_config(HttpMethod::Get, format!("{}/favicon.ico", base), config)
+                .with_label("favicon")
+                .into_builder(runtime.client()),
+        )
+        .await
+    {
+        if let Ok(bytes) = resp.bytes().await {
+            let sample = &bytes[..bytes.len().min(24)];
+            info.favicon_hash = format!(
+                "{}-{}",
+                bytes.len(),
+                base64::engine::general_purpose::STANDARD.encode(sample)
+            );
+        }
     }
 
     info.response_time_ms = start.elapsed().as_millis() as u64;

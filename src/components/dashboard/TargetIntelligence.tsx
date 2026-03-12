@@ -117,6 +117,7 @@ export function TargetIntelligence({ info }: TargetIntelligenceProps) {
       {/* Expandable sections */}
       <Section icon={Network} title="NETWORK & DNS">
         <InfoRow label="IP ADDRESSES" value={info.ip_addresses.join(", ")} />
+        <InfoRow label="DNS RECORDS" value={info.dns_records.join(", ")} />
         <InfoRow label="STATUS CODE" value={String(info.status_code)} />
         <InfoRow label="HTTP VERSION" value={info.http_version} />
         <InfoRow label="RESPONSE TIME" value={`${info.response_time_ms}ms`} />
@@ -124,6 +125,9 @@ export function TargetIntelligence({ info }: TargetIntelligenceProps) {
         {info.hosting_provider && <InfoRow label="HOSTING" value={info.hosting_provider} />}
         {info.waf_detected && <InfoRow label="WAF / FIREWALL" value={info.waf_detected} />}
         {info.os_hint && <InfoRow label="OS HINT" value={info.os_hint} />}
+        {info.tls_protocol && <InfoRow label="TLS PROTOCOL" value={info.tls_protocol} />}
+        {info.tls_issuer && <InfoRow label="TLS ISSUER" value={info.tls_issuer} />}
+        {info.favicon_hash && <InfoRow label="FAVICON HASH" value={info.favicon_hash} />}
         {hasRedirects && (
           <div className="mt-2">
             <p className="text-[9px] font-mono tracking-widest text-[#8f8f8f] font-bold mb-1.5">
