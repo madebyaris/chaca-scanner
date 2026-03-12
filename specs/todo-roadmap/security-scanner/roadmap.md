@@ -69,7 +69,7 @@ A user-friendly desktop security scanner for vibe coders and developers to detec
 |--------|------|----------|
 | done | Comprehensive settings page (6 tabs, persistent storage) | high |
 | done | UI redesign with monospace-first anti-slop design | high |
-| done | Build macOS application (.app + .dmg) | critical |
+| done | Cross-platform release (macOS .app.zip, Windows portable/installer, Linux AppImage) | critical |
 
 ---
 
@@ -99,3 +99,4 @@ A user-friendly desktop security scanner for vibe coders and developers to detec
 |---------|------|-----------|
 | 0.1.0 | 2026-03-05 | MVP — basic scanning, passive scan, dashboard, OWASP detection, macOS build |
 | 0.5.0 | 2026-03-05 | Expanded vuln DB, CMS detection, target intel, exposed services, info disclosure, settings, anti-slop UI, renamed to Chaca |
+| 0.5.0 | 2026-03-12 | Cross-platform GitHub Releases: macOS .app.zip, Windows portable/installer, Linux AppImage |

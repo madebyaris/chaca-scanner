@@ -23,8 +23,11 @@
 | 2026-03-05 | - | Info disclosure | - | Stack traces, debug headers, file path leaks |
 | 2026-03-05 | - | Target intelligence | - | IP, DNS, TLS, server, technologies, cookies, well-known files |
 | 2026-03-05 | - | Renamed to Chaca | - | SecureScan → Chaca (Chalim Scanner), v0.5.0 |
+| 2026-03-12 | - | Cross-platform release | - | GitHub Actions: macOS (.app.zip), Windows (portable exe + NSIS), Linux (AppImage) |
 
 ## Build Artifacts
 
-- **Chaca.app**: `src-tauri/target/release/bundle/macos/Chaca.app`
-- **Chaca DMG**: `src-tauri/target/release/bundle/dmg/Chaca_0.5.0_aarch64.dmg`
+- **Chaca.app**: `src-tauri/target/release/bundle/macos/Chaca.app` (zipped as `Chaca_0.5.0_aarch64.app.zip` for release)
+- **Windows portable**: `Chaca_0.5.0_x64-portable.exe` (run directly; requires WebView2 on Windows 10)
+- **Windows installer**: `Chaca_0.5.0_x64-setup.nsis.exe`
+- **Linux AppImage**: `Chaca_0.5.0_amd64.AppImage`

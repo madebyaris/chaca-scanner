@@ -282,8 +282,8 @@
     },
     {
       "id": "epic-6-task-3",
-      "title": "Build macOS application",
-      "description": "Build and verify .app + .dmg bundle for macOS",
+      "title": "Cross-platform release",
+      "description": "GitHub Actions: macOS .app.zip, Windows portable exe + NSIS installer, Linux AppImage",
       "type": "implementation",
       "priority": "critical",
       "status": "done",

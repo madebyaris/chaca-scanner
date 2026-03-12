@@ -217,8 +217,9 @@ Create a security scanner that:
 - **Rate Limiting**: Built-in delays to avoid overwhelming target servers
 
 ### 5.4 Platform
-- **Current Target**: macOS (Apple Silicon + Intel)
-- **Architecture**: Universal binary via Tauri
+- **Current Target**: macOS (Apple Silicon), Windows (x64), Linux (x64)
+- **Architecture**: Tauri 2; GitHub Actions for cross-platform releases
+- **Artifacts**: macOS .app.zip (run directly), Windows portable exe + NSIS installer, Linux AppImage
 
 ---
 
@@ -230,7 +231,7 @@ Create a security scanner that:
 | **Project folder scanning** | Focus on URL/API scanning first |
 | **Continuous monitoring** | Single scan focus |
 | **Team collaboration** | Single user focus |
-| **Linux/Windows builds** | macOS first, expand later |
+| ~~Linux/Windows builds~~ | Implemented — cross-platform releases via GitHub Actions |
 | **Mobile app scanning** | Web/API focus only |
 | **Custom rule creation** | Built-in rules only |
 | **Scheduled scans** | Manual trigger only |
@@ -278,7 +279,7 @@ Create a security scanner that:
 | Version | Milestone |
 |---------|-----------|
 | 0.1.0 | MVP — basic scanning, passive scan, dashboard, OWASP detection, macOS build |
-| 0.5.0 | Expanded vuln database (50+ types), CMS detection, target intelligence, exposed services, info disclosure, comprehensive settings, anti-slop UI redesign |
+| 0.5.0 | Expanded vuln database (50+ types), CMS detection, target intelligence, exposed services, info disclosure, comprehensive settings, anti-slop UI redesign, cross-platform GitHub Releases (macOS .app.zip, Windows portable/installer, Linux AppImage) |
 
 ---
 

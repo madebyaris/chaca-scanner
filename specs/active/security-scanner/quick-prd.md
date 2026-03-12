@@ -35,7 +35,7 @@ A user-friendly desktop security scanner that detects OWASP Top 10 vulnerabiliti
 - **Backend**: Rust (reqwest, regex, tokio, serde, tracing, base64)
 - **State**: Zustand + tauri-plugin-store (persistent settings)
 - **UI**: Radix UI + Lucide icons + Recharts
-- **Target**: macOS (v0.5)
+- **Target**: macOS, Windows, Linux (v0.5)
 
 ---
 
@@ -45,7 +45,6 @@ A user-friendly desktop security scanner that detects OWASP Top 10 vulnerabiliti
 - Project folder scanning
 - Continuous monitoring
 - Team features
-- Linux/Windows
 - Mobile app scanning
 - Custom rules
 
@@ -64,4 +63,4 @@ A user-friendly desktop security scanner that detects OWASP Top 10 vulnerabiliti
 ## Version History
 
 - **v0.1.0** - MVP: basic scanning, passive scan, dashboard, OWASP detection
-- **v0.5.0** - Expanded vulnerability database (50+ types), CMS detection, target intelligence, exposed services detection, information disclosure, comprehensive settings, anti-slop UI redesign
+- **v0.5.0** - Expanded vulnerability database (50+ types), CMS detection, target intelligence, exposed services detection, information disclosure, comprehensive settings, anti-slop UI redesign, cross-platform GitHub Releases (macOS .app.zip, Windows portable/installer, Linux AppImage)
