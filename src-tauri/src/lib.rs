@@ -38,6 +38,12 @@ pub struct ScanConfig {
     pub custom_user_agent: String,
     pub custom_headers: Vec<HeaderPair>,
     pub rate_limit_rps: u32,
+    pub auth_login_enabled: bool,
+    pub auth_login_url: String,
+    pub auth_login_email: String,
+    pub auth_login_password: String,
+    pub auth_login_email_field: String,
+    pub auth_login_password_field: String,
 
     // Crawling
     pub discovery_mode: DiscoveryMode,
@@ -124,6 +130,12 @@ impl Default for ScanConfig {
             custom_user_agent: DEFAULT_CHROME_USER_AGENT.to_string(),
             custom_headers: Vec::new(),
             rate_limit_rps: 0,
+            auth_login_enabled: false,
+            auth_login_url: String::new(),
+            auth_login_email: String::new(),
+            auth_login_password: String::new(),
+            auth_login_email_field: "email".to_string(),
+            auth_login_password_field: "password".to_string(),
 
             discovery_mode: DiscoveryMode::Merged,
             max_crawl_depth: 1,

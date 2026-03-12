@@ -16,6 +16,12 @@ export interface ScanSettings {
   customUserAgent: string;
   customHeaders: HeaderPair[];
   rateLimitRps: number;
+  authLoginEnabled: boolean;
+  authLoginUrl: string;
+  authLoginEmail: string;
+  authLoginPassword: string;
+  authLoginEmailField: string;
+  authLoginPasswordField: string;
 
   // Crawling
   discoveryMode: DiscoveryMode;
@@ -88,6 +94,17 @@ export interface ScanSettings {
   defaultExportFormat: 'json' | 'csv' | 'sarif' | 'pdf';
   autoExportOnComplete: boolean;
   historyLimit: number;
+  brandingCompanyName: string;
+  brandingCompanyTagline: string;
+  brandingCompanyWebsite: string;
+  brandingPrimaryContact: string;
+  brandingLogoDataUrl: string;
+  brandingLogoWidth: number;
+  brandingLogoHeight: number;
+  brandingPrimaryColor: string;
+  brandingAccentColor: string;
+  brandingBorderColor: string;
+  brandingSectionBackground: string;
 }
 
 const DEFAULT_CHROME_USER_AGENT =
@@ -99,6 +116,12 @@ export const DEFAULT_SETTINGS: ScanSettings = {
   customUserAgent: DEFAULT_CHROME_USER_AGENT,
   customHeaders: [],
   rateLimitRps: 0,
+  authLoginEnabled: false,
+  authLoginUrl: '',
+  authLoginEmail: '',
+  authLoginPassword: '',
+  authLoginEmailField: 'email',
+  authLoginPasswordField: 'password',
 
   discoveryMode: 'merged',
   maxCrawlDepth: 1,
@@ -165,6 +188,17 @@ export const DEFAULT_SETTINGS: ScanSettings = {
   defaultExportFormat: 'json',
   autoExportOnComplete: false,
   historyLimit: 50,
+  brandingCompanyName: '',
+  brandingCompanyTagline: '',
+  brandingCompanyWebsite: '',
+  brandingPrimaryContact: '',
+  brandingLogoDataUrl: '',
+  brandingLogoWidth: 0,
+  brandingLogoHeight: 0,
+  brandingPrimaryColor: '#191919',
+  brandingAccentColor: '#c4a44a',
+  brandingBorderColor: '#e0d5c8',
+  brandingSectionBackground: '#faf7f4',
 };
 
 /** Convert frontend settings to the Rust ScanConfig shape */
@@ -175,6 +209,12 @@ export function toScanConfig(s: ScanSettings) {
     custom_user_agent: s.customUserAgent,
     custom_headers: s.customHeaders.filter(h => h.key.trim() !== ''),
     rate_limit_rps: s.rateLimitRps,
+    auth_login_enabled: s.authLoginEnabled,
+    auth_login_url: s.authLoginUrl.trim(),
+    auth_login_email: s.authLoginEmail.trim(),
+    auth_login_password: s.authLoginPassword,
+    auth_login_email_field: s.authLoginEmailField.trim() || 'email',
+    auth_login_password_field: s.authLoginPasswordField.trim() || 'password',
     discovery_mode: s.discoveryMode,
     max_crawl_depth: s.maxCrawlDepth,
     max_endpoints: s.maxEndpoints,
@@ -238,6 +278,13 @@ export function toScanConfig(s: ScanSettings) {
 const STORE_KEY = 'scan_settings';
 const lazyStore = new LazyStore('settings.json');
 
+function sanitizeSettingsForPersistence(settings: ScanSettings): ScanSettings {
+  return {
+    ...settings,
+    authLoginPassword: '',
+  };
+}
+
 interface SettingsState {
   settings: ScanSettings;
   activeTab: SettingsTab;
@@ -284,7 +331,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   saveSettings: async () => {
     try {
-      await lazyStore.set(STORE_KEY, get().settings);
+      await lazyStore.set(STORE_KEY, sanitizeSettingsForPersistence(get().settings));
       await lazyStore.save();
     } catch {
       // Silently fail in dev/browser context

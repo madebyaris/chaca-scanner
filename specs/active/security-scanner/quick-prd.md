@@ -28,13 +28,16 @@ A user-friendly desktop security scanner that detects OWASP Top 10 vulnerabiliti
 16. **Persistent Scan History** - History survives app restart (v0.6)
 17. **Scan Presets** - Quick passive, API audit, Full scan; custom presets (v0.6)
 18. **Local Folder Scanning** - Secrets, config exposure, endpoint inventory from source (v0.6)
+19. **Authenticated Pro Scan Setup** - Quick headers and login-first flow for authenticated targets (v0.6)
+20. **Branded PDF Export** - Company branding, logo, report colors, and target intelligence-led PDF output (v0.6)
 
 ---
 
-## v0.6 Feature Pack (Planned)
+## v0.6 Feature Pack
 - Persistent scan history across restarts
 - Named scan presets (built-in + custom)
-- PDF export
+- Branded PDF export
+- Authenticated Pro scan setup (quick headers + login first)
 - Local project folder scanning MVP: secrets, exposed config, endpoint inventory (local-only, no code execution)
 
 ---
@@ -46,7 +49,7 @@ A user-friendly desktop security scanner that detects OWASP Top 10 vulnerabiliti
 - **Backend**: Rust (reqwest, regex, tokio, serde, tracing, base64)
 - **State**: Zustand + tauri-plugin-store (persistent settings)
 - **UI**: Radix UI + Lucide icons + Recharts
-- **Target**: macOS, Windows, Linux (v0.5)
+- **Target**: macOS, Windows, Linux (v0.6.0)
 
 ---
 
@@ -59,7 +62,6 @@ A user-friendly desktop security scanner that detects OWASP Top 10 vulnerabiliti
 
 ## Out of Scope (v0.6)
 
-- Authentication integration
 - Continuous monitoring
 - Team features
 - Mobile app scanning
@@ -81,4 +83,4 @@ A user-friendly desktop security scanner that detects OWASP Top 10 vulnerabiliti
 
 - **v0.1.0** - MVP: basic scanning, passive scan, dashboard, OWASP detection
 - **v0.5.0** - Expanded vulnerability database (50+ types), CMS detection, target intelligence, exposed services detection, information disclosure, comprehensive settings, anti-slop UI redesign, cross-platform GitHub Releases (macOS .app.zip, Windows portable/installer, Linux AppImage)
-- **v0.6.0** - Persistent scan history, scan presets, PDF export, local project folder scanning MVP (secrets, config exposure, endpoint inventory)
+- **v0.6.0** - Persistent scan history, scan presets, branded PDF export, authenticated Pro scan setup, local project folder scanning MVP (secrets, config exposure, endpoint inventory)

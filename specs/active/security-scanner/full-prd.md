@@ -6,9 +6,9 @@
 
 **Type:** Desktop Application (Tauri 2 + React 19 + Rust)
 
-**Version:** 0.6.0 (planned)
+**Version:** 0.6.0
 
-**Core Summary:** A user-friendly security scanner that enables developers and non-technical "vibe coders" to identify OWASP Top 10 vulnerabilities, API exposure, CMS-specific issues, exposed services, and unrestricted data exposure in their web applications before deployment. v0.6 adds a local-first workflow: persistent scan history, scan presets, PDF export, and project folder scanning. Folder scanning MVP covers secrets, exposed config, and endpoint inventory.
+**Core Summary:** A user-friendly security scanner that enables developers and non-technical "vibe coders" to identify OWASP Top 10 vulnerabilities, API exposure, CMS-specific issues, exposed services, and unrestricted data exposure in their web applications before deployment. v0.6 adds a local-first workflow: persistent scan history, scan presets, PDF export, project folder scanning, and PRO enhancements for authenticated scan setup and branded client-facing exports.
 
 **Target Users:**
 - Developers with basic security awareness
@@ -142,7 +142,7 @@ Create a security scanner that:
 - JSON export with full scan data
 - CSV export for spreadsheet analysis
 
-### 4.2 v0.6 Feature Pack (Planned)
+### 4.2 v0.6 Feature Pack
 
 #### F15: Persistent Scan History
 - Scan history persists across app restarts via tauri-plugin-store
@@ -158,6 +158,14 @@ Create a security scanner that:
 - PDF report generation from normalized result model
 - Single export pipeline for JSON/CSV/SARIF/PDF
 - Redacted sensitive values in PDF output
+- Pro branding controls for company name, logo, and report colors
+- Target intelligence and detected stack featured prominently in client-facing exports
+
+#### F17b: PRO Authenticated Scan Setup
+- New Scan exposes quick Pro actions for custom headers and login-first setup
+- Login-first flow accepts login URL, email, and password before scanning
+- Authenticated session cookies are reused by crawl, passive, and active phases
+- Auth state is surfaced in results for validation and troubleshooting
 
 #### F18: Local Project Folder Scanning (MVP)
 - **Secrets detection**: Provider-format regexes, keyword prefiltering, entropy heuristics
@@ -266,7 +274,6 @@ Create a security scanner that:
 
 | Feature | Reason |
 |---------|--------|
-| **Authentication integration** | Too complex — user manually tests auth'd endpoints |
 | ~~Project folder scanning~~ | v0.6 MVP: secrets, config exposure, endpoint inventory (local-only) |
 | **Continuous monitoring** | Single scan focus |
 | **Team collaboration** | Single user focus |
@@ -319,7 +326,7 @@ Create a security scanner that:
 |---------|-----------|
 | 0.1.0 | MVP — basic scanning, passive scan, dashboard, OWASP detection, macOS build |
 | 0.5.0 | Expanded vuln database (50+ types), CMS detection, target intelligence, exposed services, info disclosure, comprehensive settings, anti-slop UI redesign, cross-platform GitHub Releases (macOS .app.zip, Windows portable/installer, Linux AppImage) |
-| 0.6.0 | v0.6 Feature Pack: persistent scan history, scan presets, PDF export, local project folder scanning MVP (secrets, config exposure, endpoint inventory) |
+| 0.6.0 | v0.6 Feature Pack: persistent scan history, scan presets, branded PDF export, login-first Pro scan setup, local project folder scanning MVP (secrets, config exposure, endpoint inventory) |
 
 ---
 

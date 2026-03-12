@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { useSettingsStore, DEFAULT_SETTINGS, type SettingsTab } from "@/store/settingsStore"
 import { useLicenseStore, PRO_FEATURES, type ProFeature } from "@/store/licenseStore"
+import { ProUpsell } from "@/components/ProGate"
 import {
   ToggleRow,
   InputRow,
@@ -13,7 +14,7 @@ import {
   SettingsSection,
 } from "./SettingsControls"
 import { usePresetStore } from "@/store/presetStore"
-import { RotateCcw, Crown, Check, Loader2, AlertCircle, ExternalLink, Sparkles, Play, Trash2, Plus } from "lucide-react"
+import { RotateCcw, Crown, Check, Loader2, AlertCircle, ExternalLink, Sparkles, Play, Trash2, Plus, Upload } from "lucide-react"
 
 const TABS: { id: SettingsTab; label: string; pro?: boolean }[] = [
   { id: "network", label: "NETWORK" },
@@ -25,6 +26,88 @@ const TABS: { id: SettingsTab; label: string; pro?: boolean }[] = [
   { id: "presets", label: "PRESETS" },
   { id: "license", label: "LICENSE", pro: true },
 ]
+
+const LOGO_MAX_WIDTH = 1200
+const LOGO_MAX_HEIGHT = 400
+
+function normalizeHexColor(value: string, fallback: string): string {
+  const trimmed = value.trim()
+  if (/^#[0-9a-fA-F]{6}$/.test(trimmed)) return trimmed
+  return fallback
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result ?? ""))
+    reader.onerror = () => reject(new Error("Failed to read logo file"))
+    reader.readAsDataURL(file)
+  })
+}
+
+async function optimizeLogoAsset(file: File): Promise<{ dataUrl: string; width: number; height: number }> {
+  const sourceDataUrl = await readFileAsDataUrl(file)
+  const image = new Image()
+
+  const loaded = new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve()
+    image.onerror = () => reject(new Error("Failed to process logo image"))
+  })
+  image.src = sourceDataUrl
+  await loaded
+
+  const width = image.width
+  const height = image.height
+  const scale = Math.min(LOGO_MAX_WIDTH / width, LOGO_MAX_HEIGHT / height, 1)
+  const canvas = document.createElement("canvas")
+  canvas.width = Math.round(width * scale)
+  canvas.height = Math.round(height * scale)
+  const context = canvas.getContext("2d")
+
+  if (!context) {
+    return { dataUrl: sourceDataUrl, width, height }
+  }
+
+  context.drawImage(image, 0, 0, canvas.width, canvas.height)
+  return {
+    dataUrl: canvas.toDataURL("image/png", 0.92),
+    width: canvas.width,
+    height: canvas.height,
+  }
+}
+
+function BrandColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+}) {
+  return (
+    <div className="border border-[#f0f0f0] bg-[#fafafa] p-3">
+      <span className="text-[10px] font-mono tracking-widest text-[#191919] font-bold block mb-2">
+        {label}
+      </span>
+      <div className="flex items-center gap-3">
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-9 w-11 border border-[#e5e5e5] bg-white p-1"
+        />
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="flex-1 h-9 px-3 text-[11px] font-mono text-[#191919] bg-white border border-[#e5e5e5] focus:border-[#191919] focus:outline-none"
+          placeholder="#000000"
+        />
+      </div>
+    </div>
+  )
+}
 
 export function SettingsPage() {
   const { activeTab, setActiveTab, resetSettings, loadSettings, loaded } =
@@ -491,6 +574,27 @@ function OwaspDataTab() {
 
 function ExportTab() {
   const { settings, updateSettings } = useSettingsStore()
+  const hasPdfExport = useLicenseStore((s) => s.hasFeature("pdf-export"))
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setIsUploadingLogo(true)
+    try {
+      const optimized = await optimizeLogoAsset(file)
+      updateSettings({
+        brandingLogoDataUrl: optimized.dataUrl,
+        brandingLogoWidth: optimized.width,
+        brandingLogoHeight: optimized.height,
+      })
+    } finally {
+      setIsUploadingLogo(false)
+      event.target.value = ""
+    }
+  }
+
   return (
     <>
       <SettingsSection title="EXPORT PREFERENCES">
@@ -522,6 +626,201 @@ function ExportTab() {
           min={10}
           max={200}
         />
+      </SettingsSection>
+
+      <SettingsSection title="REPORT BRANDING">
+        {hasPdfExport ? (
+          <>
+            <TextRow
+              label="COMPANY NAME"
+              description="Appears in the PDF header and cover summary."
+              value={settings.brandingCompanyName}
+              onChange={(v) => updateSettings({ brandingCompanyName: v })}
+              placeholder="ACME Security"
+            />
+            <TextRow
+              label="REPORT TAGLINE"
+              description="Optional subtitle for executive-ready PDF exports."
+              value={settings.brandingCompanyTagline}
+              onChange={(v) => updateSettings({ brandingCompanyTagline: v })}
+              placeholder="Application Security Review"
+            />
+            <TextRow
+              label="COMPANY WEBSITE"
+              description="Shown in the PDF footer and brand block."
+              value={settings.brandingCompanyWebsite}
+              onChange={(v) => updateSettings({ brandingCompanyWebsite: v })}
+              placeholder="https://example.com"
+            />
+            <TextRow
+              label="PRIMARY CONTACT"
+              description="Optional contact line for recipients of the report."
+              value={settings.brandingPrimaryContact}
+              onChange={(v) => updateSettings({ brandingPrimaryContact: v })}
+              placeholder="security@example.com"
+            />
+            <div className="py-3 border-b border-[#f0f0f0]">
+              <div className="mb-3">
+                <span className="text-[11px] font-mono tracking-wider text-[#191919] font-bold block">
+                  BRAND COLORS
+                </span>
+                <span className="text-[10px] font-mono text-[#8f8f8f] mt-0.5 block leading-relaxed">
+                  Control the PDF header, accent bar, borders, and panel backgrounds so the report stays aligned with your brand.
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <BrandColorField
+                  label="PRIMARY"
+                  value={settings.brandingPrimaryColor}
+                  onChange={(value) =>
+                    updateSettings({ brandingPrimaryColor: normalizeHexColor(value, "#191919") })
+                  }
+                />
+                <BrandColorField
+                  label="ACCENT"
+                  value={settings.brandingAccentColor}
+                  onChange={(value) =>
+                    updateSettings({ brandingAccentColor: normalizeHexColor(value, "#c4a44a") })
+                  }
+                />
+                <BrandColorField
+                  label="BORDER"
+                  value={settings.brandingBorderColor}
+                  onChange={(value) =>
+                    updateSettings({ brandingBorderColor: normalizeHexColor(value, "#e0d5c8") })
+                  }
+                />
+                <BrandColorField
+                  label="SECTION BACKGROUND"
+                  value={settings.brandingSectionBackground}
+                  onChange={(value) =>
+                    updateSettings({ brandingSectionBackground: normalizeHexColor(value, "#faf7f4") })
+                  }
+                />
+              </div>
+              <div className="mt-4 border border-[#e5e5e5] bg-white p-4">
+                <span className="text-[10px] font-mono tracking-widest text-[#8f8f8f] block mb-3">
+                  LIVE PDF STYLE PREVIEW
+                </span>
+                <div
+                  className="border rounded-[2px] overflow-hidden"
+                  style={{ borderColor: settings.brandingBorderColor }}
+                >
+                  <div
+                    className="px-4 py-3"
+                    style={{ backgroundColor: settings.brandingPrimaryColor }}
+                  >
+                    <span className="text-[11px] font-mono tracking-widest text-white font-bold">
+                      {settings.brandingCompanyName || "YOUR COMPANY"}
+                    </span>
+                  </div>
+                  <div
+                    className="h-[3px]"
+                    style={{ backgroundColor: settings.brandingAccentColor }}
+                  />
+                  <div
+                    className="px-4 py-4"
+                    style={{ backgroundColor: settings.brandingSectionBackground }}
+                  >
+                    <div className="grid grid-cols-3 gap-3">
+                      {["Score", "Stack", "Findings"].map((item) => (
+                        <div
+                          key={item}
+                          className="border bg-white px-3 py-3"
+                          style={{ borderColor: settings.brandingBorderColor }}
+                        >
+                          <span className="text-[9px] font-mono tracking-widest text-[#8f8f8f] block">
+                            {item.toUpperCase()}
+                          </span>
+                          <span className="text-[12px] font-mono font-bold text-[#191919] block mt-1">
+                            Preview
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="py-3 border-b border-[#f0f0f0] last:border-b-0">
+              <div className="flex items-start justify-between gap-8">
+                <div className="flex-1 min-w-0">
+                  <span className="text-[11px] font-mono tracking-wider text-[#191919] font-bold block">
+                    COMPANY LOGO
+                  </span>
+                  <span className="text-[10px] font-mono text-[#8f8f8f] mt-0.5 block leading-relaxed">
+                    Preferred: SVG with transparent background. PNG also works well. Aim for a 3:1 logo,
+                    ideally 1200x400. Minimum recommended raster size is 600x200.
+                  </span>
+                  {(settings.brandingLogoWidth > 0 || settings.brandingLogoHeight > 0) && (
+                    <span className="text-[10px] font-mono text-[#525252] mt-2 block">
+                      Current asset: {settings.brandingLogoWidth} x {settings.brandingLogoHeight}
+                    </span>
+                  )}
+                </div>
+                <div className="w-[280px] shrink-0">
+                  <div className="border border-dashed border-[#e5e5e5] bg-[#fafafa] p-4">
+                    {settings.brandingLogoDataUrl ? (
+                      <div className="space-y-3">
+                        <div className="border border-[#e5e5e5] bg-white p-3 flex items-center justify-center min-h-[96px]">
+                          <img
+                            src={settings.brandingLogoDataUrl}
+                            alt="Company logo preview"
+                            className="max-h-16 w-auto object-contain"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="flex-1 cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/svg+xml,image/png,image/jpeg,image/webp"
+                              className="hidden"
+                              onChange={handleLogoUpload}
+                            />
+                            <span className="flex items-center justify-center gap-2 px-3 py-2 border border-[#e5e5e5] text-[10px] font-mono tracking-widest text-[#191919] hover:border-[#191919]">
+                              <Upload size={11} />
+                              {isUploadingLogo ? "UPLOADING..." : "REPLACE LOGO"}
+                            </span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateSettings({
+                                brandingLogoDataUrl: "",
+                                brandingLogoWidth: 0,
+                                brandingLogoHeight: 0,
+                              })
+                            }
+                            className="px-3 py-2 border border-[#FECACA] text-[10px] font-mono tracking-widest text-[#DC2626] hover:bg-[#FEF2F2]"
+                          >
+                            REMOVE
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer block">
+                        <input
+                          type="file"
+                          accept="image/svg+xml,image/png,image/jpeg,image/webp"
+                          className="hidden"
+                          onChange={handleLogoUpload}
+                        />
+                        <span className="flex items-center justify-center gap-2 px-3 py-8 border border-[#e5e5e5] bg-white text-[10px] font-mono tracking-widest text-[#525252] hover:border-[#191919] hover:text-[#191919]">
+                          <Upload size={12} />
+                          {isUploadingLogo ? "UPLOADING..." : "UPLOAD LOGO"}
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="py-4">
+            <ProUpsell feature="pdf-export" />
+          </div>
+        )}
       </SettingsSection>
 
       <SettingsSection title="SCORING WEIGHTS (ADVANCED)">

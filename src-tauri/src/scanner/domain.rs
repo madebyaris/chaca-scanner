@@ -218,6 +218,7 @@ impl EndpointInventory {
 #[derive(Debug, Clone)]
 pub enum AuthProfile {
     Anonymous,
+    LoginSession,
     BearerToken,
     Basic,
     Cookie,
@@ -228,6 +229,7 @@ impl AuthProfile {
     pub fn mode_label(&self) -> &'static str {
         match self {
             Self::Anonymous => "anonymous",
+            Self::LoginSession => "login_session",
             Self::BearerToken => "bearer_token",
             Self::Basic => "basic_auth",
             Self::Cookie => "cookie",
@@ -252,7 +254,15 @@ impl RequestContext {
         config: &ScanConfig,
     ) -> Self {
         let headers = config.custom_headers.clone();
-        let auth_profile = detect_auth_profile(&headers);
+        let auth_profile = if config.auth_login_enabled
+            && !config.auth_login_url.trim().is_empty()
+            && !config.auth_login_email.trim().is_empty()
+            && !config.auth_login_password.is_empty()
+        {
+            AuthProfile::LoginSession
+        } else {
+            detect_auth_profile(&headers)
+        };
         Self {
             method,
             url: url.into(),
@@ -306,14 +316,20 @@ impl RequestContext {
             .map(|value| format!(" ({})", value))
             .unwrap_or_default();
         if rendered_headers.is_empty() {
-            format!("{} {}{}", self.method.as_str(), self.url, label)
+            format!(
+                "{} {}{} [{}]",
+                self.method.as_str(),
+                self.url,
+                label,
+                self.auth_profile.mode_label()
+            )
         } else {
             format!(
                 "{} {}{} [{}]",
                 self.method.as_str(),
                 self.url,
                 label,
-                rendered_headers.join(", ")
+                format!("{}; {}", self.auth_profile.mode_label(), rendered_headers.join(", "))
             )
         }
     }
@@ -540,6 +556,7 @@ impl ScanRuntime {
         if config.accept_invalid_certs {
             builder = builder.danger_accept_invalid_certs(true);
         }
+        builder = builder.cookie_store(true);
         if !config.custom_user_agent.is_empty() {
             builder = builder.user_agent(&config.custom_user_agent);
         }

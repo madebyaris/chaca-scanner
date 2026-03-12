@@ -28,10 +28,11 @@
 | 2026-03-12 | - | v0.6 Feature Pack implemented | epic-7 | Persistent history (history.json), scan presets (presets.json), PDF export, local folder scanning (secrets, config, endpoints) |
 | 2026-03-12 | - | v0.6.0 released | - | Chaca v0.6.0 — Feature Pack complete |
 | 2026-03-12 | - | Licensing polish | - | New Gumroad product link (chacha-security), 7-day post-expiry renewal grace period |
+| 2026-03-12 | - | Pro export/auth polish | - | Quick headers, login-first scan setup, branded PDF exports with target intelligence and brand colors |
 
 ## Build Artifacts
 
-- **Chaca.app**: `src-tauri/target/release/bundle/macos/Chaca.app` (zipped as `Chaca_0.5.0_aarch64.app.zip` for release)
-- **Windows portable**: `Chaca_0.5.0_x64-portable.exe` (run directly; requires WebView2 on Windows 10)
-- **Windows installer**: `Chaca_0.5.0_x64-setup.nsis.exe`
-- **Linux AppImage**: `Chaca_0.5.0_amd64.AppImage`
+- **Chaca.app**: `src-tauri/target/release/bundle/macos/Chaca.app` (zipped as `Chaca_0.6.0_aarch64.app.zip` for release)
+- **Windows portable**: `Chaca_0.6.0_x64-portable.exe` (run directly; requires WebView2 on Windows 10)
+- **Windows installer**: `Chaca_0.6.0_x64-setup.nsis.exe`
+- **Linux AppImage**: `Chaca_0.6.0_amd64.AppImage`

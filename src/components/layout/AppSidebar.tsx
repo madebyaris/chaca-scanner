@@ -144,6 +144,7 @@ export function AppSidebar() {
                   const isActive = item.view === view && (
                     !item.settingsTab || currentSettingsTab === item.settingsTab
                   )
+                  const isLicense = item.label === "LICENSE"
                   return (
                     <li key={item.label}>
                       <button
@@ -153,17 +154,33 @@ export function AppSidebar() {
                         }}
                         className={cn(
                           "flex items-center gap-2 pl-8 pr-4 py-1.5 text-[11px] tracking-widest font-mono transition-colors w-full text-left relative whitespace-nowrap",
+                          isLicense && "font-bold",
                           isActive
-                            ? "text-[#191919] font-bold"
-                            : "text-[#707070] hover:text-[#191919]"
+                            ? isLicense
+                              ? "text-[#a08530] bg-[#fdfbf8]"
+                              : "text-[#191919] font-bold"
+                            : isLicense
+                              ? "text-[#a08530] hover:text-[#8b6914] hover:bg-[#faf7f4]"
+                              : "text-[#707070] hover:text-[#191919]"
                         )}
                       >
                         {isActive && (
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 w-1 h-4 bg-[#191919]" />
+                          <span
+                            className={cn(
+                              "absolute left-4 top-1/2 -translate-y-1/2 w-1 h-4",
+                              isLicense ? "bg-[#c4a44a]" : "bg-[#191919]"
+                            )}
+                          />
                         )}
+                        {isLicense && <Crown size={10} className="shrink-0 text-[#c4a44a]" />}
                         {item.label}
                         {isActive && (
-                          <span className="ml-1 inline-block w-2 h-2 bg-[#191919]" />
+                          <span
+                            className={cn(
+                              "ml-1 inline-block w-2 h-2",
+                              isLicense ? "bg-[#c4a44a]" : "bg-[#191919]"
+                            )}
+                          />
                         )}
                       </button>
                     </li>

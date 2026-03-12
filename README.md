@@ -57,6 +57,7 @@
 - Report viewer with CWE links and external references
 - Filter by severity and confidence
 - Export to JSON, CSV, SARIF, and PDF
+- Pro scan helpers: quick headers, login-first setup, branded PDF exports
 - Persistent scan history across app restarts
 - Scan presets (Quick passive, API audit, Full scan) + custom presets
 - Local folder scanning: secrets, config exposure, endpoint inventory (local-only)
@@ -107,7 +108,7 @@ Pre-built binaries for **macOS (Apple Silicon)**, **Windows (x64)**, and **Linux
 
 1. Bump version in `package.json` and `src-tauri/tauri.conf.json`
 2. Commit and push
-3. Create and push a version tag: `git tag v0.5.0 && git push origin v0.5.0`
+3. Create and push a version tag: `git tag v0.6.0 && git push origin v0.6.0`
 4. GitHub Actions builds all platforms and creates a draft release
 5. Edit the draft release, add release notes, and publish
 
@@ -115,10 +116,10 @@ Pre-built binaries for **macOS (Apple Silicon)**, **Windows (x64)**, and **Linux
 
 | Platform | Artifact | Notes |
 |----------|----------|-------|
-| macOS (Apple Silicon) | `Chaca_0.5.0_aarch64.app.zip` | Unzip and run Chaca.app directly |
-| Windows (x64) | `Chaca_0.5.0_x64-portable.exe` | Run directly; requires [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) on Windows 10 |
-| Windows (x64) | `Chaca_0.5.0_x64-setup.nsis.exe` | Installer (includes WebView2) |
-| Linux (x64) | `Chaca_0.5.0_amd64.AppImage` | Run directly |
+| macOS (Apple Silicon) | `Chaca_0.6.0_aarch64.app.zip` | Unzip and run Chaca.app directly |
+| Windows (x64) | `Chaca_0.6.0_x64-portable.exe` | Run directly; requires [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) on Windows 10 |
+| Windows (x64) | `Chaca_0.6.0_x64-setup.nsis.exe` | Installer (includes WebView2) |
+| Linux (x64) | `Chaca_0.6.0_amd64.AppImage` | Run directly |
 
 **Note:** Current releases are unsigned. macOS and Windows may show security warnings; use "Open Anyway" or allow the app in system settings as needed. Ensure **Settings → Actions → General → Workflow permissions** is set to "Read and write permissions" so the release workflow can create releases.
 
@@ -174,7 +175,7 @@ src-tauri/              # Rust backend
 
 ## Support
 
-**Chaca Pro** unlocks PDF export, unlimited history, scan profiles, and more. [Get a license](https://madebyaris.gumroad.com/l/chacha-security) to support indie development.
+**Chaca Pro** unlocks branded PDF export, unlimited history, scan profiles, quick auth headers, and login-first scanning. [Get a license](https://madebyaris.gumroad.com/l/chacha-security) to support indie development.
 
 If your subscription expires, you have 7 days to resubscribe before Pro features are disabled — no sudden interruptions.
 

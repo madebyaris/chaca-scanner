@@ -10,6 +10,7 @@ use std::sync::atomic::{AtomicU32, Ordering as AtomicOrdering};
 use std::sync::Arc;
 use tauri::Emitter;
 use tracing::info;
+use url::Url;
 
 #[derive(Clone)]
 pub struct ProgressEmitter {
@@ -55,6 +56,75 @@ impl ProgressEmitter {
     }
 }
 
+fn resolve_login_url(
+    root_url: &str,
+    login_url: &str,
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    if let Ok(parsed) = Url::parse(login_url) {
+        return Ok(parsed.to_string());
+    }
+
+    let root = Url::parse(root_url)?;
+    Ok(root.join(login_url)?.to_string())
+}
+
+async fn bootstrap_authenticated_session(
+    root_url: &str,
+    config: &ScanConfig,
+    runtime: &ScanRuntime,
+    emitter: &ProgressEmitter,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if !config.auth_login_enabled {
+        return Ok(());
+    }
+
+    if config.auth_login_url.trim().is_empty()
+        || config.auth_login_email.trim().is_empty()
+        || config.auth_login_password.is_empty()
+    {
+        return Err(
+            "Authenticated scan requires login URL, email, and password before starting.".into(),
+        );
+    }
+
+    let login_url = resolve_login_url(root_url, &config.auth_login_url)?;
+    emitter.emit_detail(
+        "auth",
+        4,
+        100,
+        "Signing in before scan...",
+        &shorten_url(&login_url),
+    );
+
+    let payload = [
+        (
+            config.auth_login_email_field.trim().to_string(),
+            config.auth_login_email.trim().to_string(),
+        ),
+        (
+            config.auth_login_password_field.trim().to_string(),
+            config.auth_login_password.clone(),
+        ),
+    ];
+
+    let context = RequestContext::from_scan_config(HttpMethod::Post, &login_url, config)
+        .with_label("login");
+    let response = runtime
+        .execute_request(context.into_builder(runtime.client()).form(&payload))
+        .await?;
+    let status = response.status();
+
+    if status == reqwest::StatusCode::UNAUTHORIZED || status == reqwest::StatusCode::FORBIDDEN {
+        return Err(format!("Login failed with status {}", status).into());
+    }
+    if !status.is_success() && !status.is_redirection() {
+        return Err(format!("Login failed with unexpected status {}", status).into());
+    }
+
+    emitter.emit("auth", 8, 100, "Authenticated session ready");
+    Ok(())
+}
+
 pub async fn run_scan(
     request: ScanRequest,
     app_handle: Option<tauri::AppHandle>,
@@ -75,6 +145,8 @@ pub async fn run_scan(
     let emitter = ProgressEmitter::new(app_handle);
 
     let runtime = ScanRuntime::new(config)?;
+    ensure_not_cancelled()?;
+    bootstrap_authenticated_session(&request.url, config, &runtime, &emitter).await?;
     let base_request =
         RequestContext::from_scan_config(HttpMethod::Get, &request.url, config).with_label("root");
 
