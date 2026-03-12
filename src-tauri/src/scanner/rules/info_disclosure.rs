@@ -85,10 +85,12 @@ pub fn check_info_disclosure(
                 category: "CWE-200 - Exposure of Sensitive Information".to_string(),
                 location: url.to_string(),
                 evidence: truncate(evidence, 200),
-                impact: "Reveals internal architecture, file paths, and technology versions".to_string(),
-                remediation: "Configure error handling to return generic messages in production".to_string(),
+                impact: "Reveals internal architecture, file paths, and technology versions"
+                    .to_string(),
+                remediation: "Configure error handling to return generic messages in production"
+                    .to_string(),
                 affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                ..Default::default()
             });
             break;
         }
@@ -104,7 +106,10 @@ pub fn check_info_disclosure(
                 vulns.push(Vulnerability {
                     id: "passive-info-disclosure".to_string(),
                     title: "Information Disclosure: File Path".to_string(),
-                    description: format!("Internal file path '{}' leaked in response", path_pattern),
+                    description: format!(
+                        "Internal file path '{}' leaked in response",
+                        path_pattern
+                    ),
                     severity: Severity::Low,
                     confidence: Confidence::Firm,
                     category: "CWE-200 - Exposure of Sensitive Information".to_string(),
@@ -113,7 +118,7 @@ pub fn check_info_disclosure(
                     impact: "Reveals internal server directory structure".to_string(),
                     remediation: "Remove file paths from error messages and responses".to_string(),
                     affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                    ..Default::default()
                 });
                 break;
             }
@@ -135,7 +140,7 @@ pub fn check_info_disclosure(
                     impact: "Reveals debug information useful for targeted attacks".to_string(),
                     remediation: "Remove debug headers in production deployments".to_string(),
                     affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                    ..Default::default()
                 });
                 break;
             }

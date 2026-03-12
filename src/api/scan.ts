@@ -17,8 +17,12 @@ export async function startScan(
     scan_type: scanType,
     ...(config && { config }),
   };
-  
+
   return await invoke<ScanResult>('start_scan', { request });
+}
+
+export async function startFolderScan(path: string): Promise<ScanResult> {
+  return await invoke<ScanResult>('scan_folder', { path });
 }
 
 export async function getAppInfo() {

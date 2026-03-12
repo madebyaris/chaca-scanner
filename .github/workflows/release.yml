@@ -59,3 +59,30 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Zip macOS app for direct run
+        if: matrix.platform == 'macos-latest'
+        run: |
+          VERSION=$(jq -r .version src-tauri/tauri.conf.json)
+          cd src-tauri/target/release/bundle/macos
+          zip -r Chaca_${VERSION}_aarch64.app.zip Chaca.app
+          mv Chaca_*.app.zip ${{ github.workspace }}/
+
+      - name: Upload macOS app zip
+        if: matrix.platform == 'macos-latest'
+        run: |
+          VERSION=$(jq -r .version src-tauri/tauri.conf.json)
+          TAG="v${VERSION}"
+          gh release upload ${TAG} Chaca_${VERSION}_aarch64.app.zip --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows portable exe
+        if: matrix.platform == 'windows-latest'
+        run: |
+          VERSION=$(jq -r .version src-tauri/tauri.conf.json)
+          TAG="v${VERSION}"
+          cp src-tauri/target/release/securescan.exe Chaca_${VERSION}_x64-portable.exe
+          gh release upload ${TAG} Chaca_${VERSION}_x64-portable.exe --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

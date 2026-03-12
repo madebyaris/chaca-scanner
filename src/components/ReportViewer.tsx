@@ -3,8 +3,9 @@ import { cn } from "@/lib/utils"
 import type { ScanResult, Vulnerability, Severity, Confidence } from "@/store/scanStore"
 import { useScanStore } from "@/store/scanStore"
 import { useSettingsStore, toScanConfig } from "@/store/settingsStore"
+import { useLicenseStore } from "@/store/licenseStore"
 import { startScan } from "@/api/scan"
-import { exportCSV, exportJSON, exportSARIF, exportByFormat } from "@/utils/export"
+import { exportCSV, exportJSON, exportSARIF, exportPDF, exportByFormat } from "@/utils/export"
 import { ChevronDown, ChevronRight, RotateCcw } from "lucide-react"
 
 const severityOrder: Severity[] = ["critical", "high", "medium", "low", "info"]
@@ -117,7 +118,10 @@ function VulnerabilityRow({
       const config = toScanConfig(settings)
       const result = await startScan(rootUrl, scanType, config as Record<string, unknown>)
       setResult(result, settings.historyLimit)
-      if (settings.autoExportOnComplete) {
+      if (
+        settings.autoExportOnComplete &&
+        (settings.defaultExportFormat !== "pdf" || useLicenseStore.getState().hasFeature("pdf-export"))
+      ) {
         exportByFormat(result, settings.defaultExportFormat)
       }
     } catch (error) {
@@ -329,6 +333,9 @@ export function ReportViewer({ result }: ReportViewerProps) {
   const [severityFilter, setSeverityFilter] = useState<Severity | "all">("all")
   const [sortBy, setSortBy] = useState<"severity" | "category" | "confidence">("severity")
   const history = useScanStore((state) => state.history)
+  const setView = useScanStore((state) => state.setView)
+  const setActiveTab = useSettingsStore((state) => state.setActiveTab)
+  const hasPdfExport = useLicenseStore((state) => state.hasFeature("pdf-export"))
 
   const filteredVulns = useMemo(() => {
     let list = result.vulnerabilities
@@ -352,6 +359,15 @@ export function ReportViewer({ result }: ReportViewerProps) {
     ? result.cms_detected.charAt(0).toUpperCase() + result.cms_detected.slice(1)
     : null
   const baseline = useMemo(() => computeBaselineDiff(result, history), [history, result])
+
+  const handlePdfExport = () => {
+    if (!hasPdfExport) {
+      setActiveTab("license")
+      setView("settings")
+      return
+    }
+    exportPDF(result)
+  }
 
   return (
     <div className="px-6 py-6 space-y-4 animate-fade-in">
@@ -442,6 +458,17 @@ export function ReportViewer({ result }: ReportViewerProps) {
             className="px-3 py-1 border border-[#e5e5e5] text-[10px] font-mono tracking-widest text-[#525252] hover:border-[#191919] hover:text-[#191919] transition-colors"
           >
             SARIF
+          </button>
+          <button
+            onClick={handlePdfExport}
+            className={cn(
+              "px-3 py-1 border text-[10px] font-mono tracking-widest transition-colors",
+              hasPdfExport
+                ? "border-[#e5e5e5] text-[#525252] hover:border-[#191919] hover:text-[#191919]"
+                : "border-[#e0d5c8] text-[#a08530] bg-[#faf7f4] hover:border-[#c4a44a]"
+            )}
+          >
+            PDF
           </button>
         </div>
       </div>

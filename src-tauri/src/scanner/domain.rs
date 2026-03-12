@@ -3,8 +3,8 @@ use crate::{
 };
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use std::collections::{BTreeSet, HashMap};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 
@@ -149,7 +149,11 @@ impl InventoryEndpoint {
             url: self.url.clone(),
             method: self.method.as_str().to_string(),
             source: self.source.as_str().to_string(),
-            tags: self.tags.iter().map(|tag| tag.as_str().to_string()).collect(),
+            tags: self
+                .tags
+                .iter()
+                .map(|tag| tag.as_str().to_string())
+                .collect(),
             parameter_names: self
                 .parameters
                 .iter()
@@ -177,14 +181,10 @@ impl EndpointInventory {
     }
 
     pub fn add_or_merge(&mut self, endpoint: InventoryEndpoint) {
-        if let Some(existing) = self
-            .endpoints
-            .iter_mut()
-            .find(|item| {
-                item.normalized_location == endpoint.normalized_location
-                    && item.method == endpoint.method
-            })
-        {
+        if let Some(existing) = self.endpoints.iter_mut().find(|item| {
+            item.normalized_location == endpoint.normalized_location
+                && item.method == endpoint.method
+        }) {
             existing.last_status = existing.last_status.or(endpoint.last_status);
             existing.baseline_length = existing.baseline_length.or(endpoint.baseline_length);
             existing.depth = existing.depth.min(endpoint.depth);
@@ -197,12 +197,16 @@ impl EndpointInventory {
     }
 
     pub fn urls(&self) -> Vec<String> {
-        self.endpoints.iter().map(|endpoint| endpoint.url.clone()).collect()
+        self.endpoints
+            .iter()
+            .map(|endpoint| endpoint.url.clone())
+            .collect()
     }
 
     pub fn active_candidates(&self) -> impl Iterator<Item = &InventoryEndpoint> {
         self.endpoints.iter().filter(|endpoint| {
-            !endpoint.tags.contains(&EndpointTag::Static) && !endpoint.tags.contains(&EndpointTag::Docs)
+            !endpoint.tags.contains(&EndpointTag::Static)
+                && !endpoint.tags.contains(&EndpointTag::Docs)
         })
     }
 
@@ -214,6 +218,7 @@ impl EndpointInventory {
 #[derive(Debug, Clone)]
 pub enum AuthProfile {
     Anonymous,
+    LoginSession,
     BearerToken,
     Basic,
     Cookie,
@@ -224,6 +229,7 @@ impl AuthProfile {
     pub fn mode_label(&self) -> &'static str {
         match self {
             Self::Anonymous => "anonymous",
+            Self::LoginSession => "login_session",
             Self::BearerToken => "bearer_token",
             Self::Basic => "basic_auth",
             Self::Cookie => "cookie",
@@ -248,7 +254,15 @@ impl RequestContext {
         config: &ScanConfig,
     ) -> Self {
         let headers = config.custom_headers.clone();
-        let auth_profile = detect_auth_profile(&headers);
+        let auth_profile = if config.auth_login_enabled
+            && !config.auth_login_url.trim().is_empty()
+            && !config.auth_login_email.trim().is_empty()
+            && !config.auth_login_password.is_empty()
+        {
+            AuthProfile::LoginSession
+        } else {
+            detect_auth_profile(&headers)
+        };
         Self {
             method,
             url: url.into(),
@@ -302,14 +316,20 @@ impl RequestContext {
             .map(|value| format!(" ({})", value))
             .unwrap_or_default();
         if rendered_headers.is_empty() {
-            format!("{} {}{}", self.method.as_str(), self.url, label)
+            format!(
+                "{} {}{} [{}]",
+                self.method.as_str(),
+                self.url,
+                label,
+                self.auth_profile.mode_label()
+            )
         } else {
             format!(
                 "{} {}{} [{}]",
                 self.method.as_str(),
                 self.url,
                 label,
-                rendered_headers.join(", ")
+                format!("{}; {}", self.auth_profile.mode_label(), rendered_headers.join(", "))
             )
         }
     }
@@ -319,7 +339,11 @@ impl RequestContext {
         AuthState {
             mode: self.auth_profile.mode_label().to_string(),
             applied,
-            status: if applied { "applied".to_string() } else { "anonymous".to_string() },
+            status: if applied {
+                "applied".to_string()
+            } else {
+                "anonymous".to_string()
+            },
             details: self.redacted_summary(),
         }
     }
@@ -527,11 +551,12 @@ pub struct ScanRuntime {
 
 impl ScanRuntime {
     pub fn new(config: &ScanConfig) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let mut builder = reqwest::Client::builder()
-            .timeout(Duration::from_secs(config.http_timeout_secs));
+        let mut builder =
+            reqwest::Client::builder().timeout(Duration::from_secs(config.http_timeout_secs));
         if config.accept_invalid_certs {
             builder = builder.danger_accept_invalid_certs(true);
         }
+        builder = builder.cookie_store(true);
         if !config.custom_user_agent.is_empty() {
             builder = builder.user_agent(&config.custom_user_agent);
         }
@@ -671,7 +696,12 @@ pub fn apply_endpoint_defaults(
             let form_parameters: Vec<(String, String)> = endpoint
                 .parameters
                 .iter()
-                .filter(|parameter| matches!(parameter.location, ParameterLocation::Form | ParameterLocation::Json))
+                .filter(|parameter| {
+                    matches!(
+                        parameter.location,
+                        ParameterLocation::Form | ParameterLocation::Json
+                    )
+                })
                 .map(|parameter| (parameter.name.clone(), default_value.to_string()))
                 .collect();
             if form_parameters.is_empty() {

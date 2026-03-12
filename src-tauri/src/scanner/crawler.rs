@@ -6,8 +6,8 @@ use tracing::info;
 use url::Url;
 
 use super::domain::{
-    EndpointInventory, EndpointParameter, EndpointSource, EndpointTag, HttpMethod,
-    InventoryEndpoint, ParameterLocation, RequestContext, ScanRuntime, normalize_fingerprint_location,
+    normalize_fingerprint_location, EndpointInventory, EndpointParameter, EndpointSource,
+    EndpointTag, HttpMethod, InventoryEndpoint, ParameterLocation, RequestContext, ScanRuntime,
 };
 
 #[derive(Debug, Clone)]
@@ -25,7 +25,9 @@ pub async fn crawl(
 ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
     let runtime = ScanRuntime::new(config)?;
     let noop_emitter = super::engine::ProgressEmitter::new(None);
-    Ok(crawl_inventory(url, config, &runtime, &noop_emitter).await?.urls())
+    Ok(crawl_inventory(url, config, &runtime, &noop_emitter)
+        .await?
+        .urls())
 }
 
 pub async fn crawl_inventory(
@@ -50,7 +52,10 @@ pub async fn crawl_inventory(
         EndpointSource::Seed,
     );
 
-    if matches!(config.discovery_mode, DiscoveryMode::Artifact | DiscoveryMode::Merged) {
+    if matches!(
+        config.discovery_mode,
+        DiscoveryMode::Artifact | DiscoveryMode::Merged
+    ) {
         for artifact_endpoint in extract_artifact_endpoints(&base_url, config) {
             inventory.artifact_seed_count += 1;
             let in_scope = within_scope(&artifact_endpoint.url, &origin, config);
@@ -91,13 +96,7 @@ pub async fn crawl_inventory(
                         infer_tags(&candidate, None),
                         collect_parameters_from_url(&candidate),
                     ));
-                    enqueue_endpoint(
-                        &mut queue,
-                        &mut queued,
-                        candidate,
-                        1,
-                        source,
-                    );
+                    enqueue_endpoint(&mut queue, &mut queued, candidate, 1, source);
                 }
             }
         }
@@ -114,7 +113,9 @@ pub async fn crawl_inventory(
             infer_tags(url, None),
             collect_parameters_from_url(url),
         ));
-        inventory.endpoints.sort_by(|left, right| left.url.cmp(&right.url));
+        inventory
+            .endpoints
+            .sort_by(|left, right| left.url.cmp(&right.url));
         inventory.endpoints.truncate(max_endpoints);
         return Ok(inventory);
     }
@@ -137,7 +138,10 @@ pub async fn crawl_inventory(
         crawl_step += 1;
         let crawl_pct = (crawl_step * 14 / max_endpoints.max(1) as u32).min(14);
         let short = if current_url.len() > 60 {
-            format!("...{}", &current_url[current_url.len().saturating_sub(57)..])
+            format!(
+                "...{}",
+                &current_url[current_url.len().saturating_sub(57)..]
+            )
         } else {
             current_url.clone()
         };
@@ -145,12 +149,16 @@ pub async fn crawl_inventory(
             "crawling",
             crawl_pct,
             100,
-            &format!("Crawling depth {} — {} endpoints found", depth, inventory.endpoints.len()),
+            &format!(
+                "Crawling depth {} — {} endpoints found",
+                depth,
+                inventory.endpoints.len()
+            ),
             &short,
         );
 
-        let context =
-            RequestContext::from_scan_config(HttpMethod::Get, &current_url, config).with_label("crawl");
+        let context = RequestContext::from_scan_config(HttpMethod::Get, &current_url, config)
+            .with_label("crawl");
         let response = match runtime
             .execute_request(context.into_builder(runtime.client()))
             .await
@@ -225,7 +233,9 @@ pub async fn crawl_inventory(
         }
     }
 
-    inventory.endpoints.sort_by(|left, right| left.url.cmp(&right.url));
+    inventory
+        .endpoints
+        .sort_by(|left, right| left.url.cmp(&right.url));
     inventory.endpoints.truncate(max_endpoints);
     Ok(inventory)
 }
@@ -455,7 +465,12 @@ fn push_discovered(
     if url.is_empty() {
         return;
     }
-    let key = format!("{}|{}|{}", method.as_str(), source.as_str(), normalize_fingerprint_location(&url));
+    let key = format!(
+        "{}|{}|{}",
+        method.as_str(),
+        source.as_str(),
+        normalize_fingerprint_location(&url)
+    );
     if seen.insert(key) {
         discovered.push(DiscoveredEndpoint {
             url,
@@ -726,7 +741,11 @@ fn extract_postman_items(
             .and_then(|value| value.get("raw"))
             .and_then(|value| value.as_str())
             .map(|value| value.to_string())
-            .or_else(|| url_value.and_then(|value| value.as_str()).map(|value| value.to_string()));
+            .or_else(|| {
+                url_value
+                    .and_then(|value| value.as_str())
+                    .map(|value| value.to_string())
+            });
         let Some(raw) = raw else {
             continue;
         };
@@ -778,8 +797,8 @@ async fn fetch_known_paths(
     }
 
     let sitemap_url = format!("{}/sitemap.xml", base);
-    let sitemap_context =
-        RequestContext::from_scan_config(HttpMethod::Get, &sitemap_url, config).with_label("sitemap");
+    let sitemap_context = RequestContext::from_scan_config(HttpMethod::Get, &sitemap_url, config)
+        .with_label("sitemap");
     if let Ok(response) = runtime
         .execute_request(sitemap_context.into_builder(runtime.client()))
         .await
