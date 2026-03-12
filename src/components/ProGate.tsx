@@ -67,7 +67,7 @@ export function ProUpsell({ feature, compact = false }: ProUpsellProps) {
       </div>
       <div className="px-5 py-2 border-t border-[#e0d5c8] bg-[#faf7f4]/50">
         <span className="text-[9px] font-mono text-[#a08530] tracking-wider">
-          $5/MONTH OR $120 LIFETIME
+          $5/MONTH OR $50/YEAR
         </span>
       </div>
     </div>

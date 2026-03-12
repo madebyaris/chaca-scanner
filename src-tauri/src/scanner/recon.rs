@@ -25,7 +25,11 @@ pub async fn collect_target_info(
     info!("Resolving DNS for {}", host);
     if let Ok(addrs) = format!("{}:{}", host, port).to_socket_addrs() {
         let ips: Vec<String> = addrs.map(|a| a.ip().to_string()).collect();
-        let unique: Vec<String> = ips.into_iter().collect::<std::collections::HashSet<_>>().into_iter().collect();
+        let unique: Vec<String> = ips
+            .into_iter()
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
         info.ip_addresses = unique;
         info.dns_records = info.ip_addresses.clone();
     }
@@ -152,9 +156,13 @@ pub async fn collect_target_info(
 
     if let Ok(resp) = runtime
         .execute_request(
-            RequestContext::from_scan_config(HttpMethod::Get, format!("{}/robots.txt", base), config)
-                .with_label("robots")
-                .into_builder(runtime.client()),
+            RequestContext::from_scan_config(
+                HttpMethod::Get,
+                format!("{}/robots.txt", base),
+                config,
+            )
+            .with_label("robots")
+            .into_builder(runtime.client()),
         )
         .await
     {
@@ -162,9 +170,13 @@ pub async fn collect_target_info(
     }
     if let Ok(resp) = runtime
         .execute_request(
-            RequestContext::from_scan_config(HttpMethod::Get, format!("{}/sitemap.xml", base), config)
-                .with_label("sitemap")
-                .into_builder(runtime.client()),
+            RequestContext::from_scan_config(
+                HttpMethod::Get,
+                format!("{}/sitemap.xml", base),
+                config,
+            )
+            .with_label("sitemap")
+            .into_builder(runtime.client()),
         )
         .await
     {
@@ -187,9 +199,13 @@ pub async fn collect_target_info(
 
     if let Ok(resp) = runtime
         .execute_request(
-            RequestContext::from_scan_config(HttpMethod::Get, format!("{}/favicon.ico", base), config)
-                .with_label("favicon")
-                .into_builder(runtime.client()),
+            RequestContext::from_scan_config(
+                HttpMethod::Get,
+                format!("{}/favicon.ico", base),
+                config,
+            )
+            .with_label("favicon")
+            .into_builder(runtime.client()),
         )
         .await
     {
@@ -212,7 +228,12 @@ fn parse_cookie(raw: &str) -> CookieInfo {
     let lower = raw.to_lowercase();
     let parts: Vec<&str> = raw.splitn(2, ';').collect();
     let name_val = parts.first().unwrap_or(&"");
-    let name = name_val.splitn(2, '=').next().unwrap_or("").trim().to_string();
+    let name = name_val
+        .splitn(2, '=')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .to_string();
 
     let mut cookie = CookieInfo {
         name,
@@ -231,11 +252,19 @@ fn parse_cookie(raw: &str) -> CookieInfo {
     }
 
     if let Some(domain_part) = lower.split(';').find(|p| p.trim().starts_with("domain=")) {
-        cookie.domain = domain_part.trim().strip_prefix("domain=").unwrap_or("").to_string();
+        cookie.domain = domain_part
+            .trim()
+            .strip_prefix("domain=")
+            .unwrap_or("")
+            .to_string();
     }
 
     if let Some(path_part) = lower.split(';').find(|p| p.trim().starts_with("path=")) {
-        cookie.path = path_part.trim().strip_prefix("path=").unwrap_or("").to_string();
+        cookie.path = path_part
+            .trim()
+            .strip_prefix("path=")
+            .unwrap_or("")
+            .to_string();
     }
 
     cookie
@@ -365,7 +394,9 @@ fn detect_cdn_waf(headers: &reqwest::header::HeaderMap, info: &mut TargetInfo) {
         info.hosting_provider = "Netlify".to_string();
     } else if headers.get("x-amz-request-id").is_some() {
         info.hosting_provider = "AWS".to_string();
-    } else if headers.get("x-goog-generation").is_some() || headers.get("x-guploader-uploadid").is_some() {
+    } else if headers.get("x-goog-generation").is_some()
+        || headers.get("x-guploader-uploadid").is_some()
+    {
         info.hosting_provider = "Google Cloud".to_string();
     } else if headers.get("x-azure-ref").is_some() {
         info.hosting_provider = "Microsoft Azure".to_string();
@@ -418,7 +449,8 @@ fn detect_technologies_from_body(body: &str, info: &mut TargetInfo) {
     ];
 
     for (pattern, tech_name, lang, fw) in tech_signatures {
-        if body_lower.contains(pattern) && !info.technologies.iter().any(|t| t.contains(tech_name)) {
+        if body_lower.contains(pattern) && !info.technologies.iter().any(|t| t.contains(tech_name))
+        {
             info.technologies.push(tech_name.to_string());
             if !lang.is_empty() && info.language.is_empty() {
                 info.language = lang.to_string();
@@ -430,7 +462,10 @@ fn detect_technologies_from_body(body: &str, info: &mut TargetInfo) {
     }
 
     // Google Analytics / Tag Manager
-    if body_lower.contains("google-analytics") || body_lower.contains("gtag(") || body_lower.contains("ga(") {
+    if body_lower.contains("google-analytics")
+        || body_lower.contains("gtag(")
+        || body_lower.contains("ga(")
+    {
         info.technologies.push("Google Analytics".to_string());
     }
     if body_lower.contains("googletagmanager") {

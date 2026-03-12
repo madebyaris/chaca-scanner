@@ -6,10 +6,10 @@
 |-------|-------|
 | **ID** | security-scanner |
 | **Title** | Chaca - Web Security Scanner |
-| **Status** | v0.5.0 Released |
+| **Status** | v0.6.0 Released |
 | **Complexity** | Medium |
-| **Total Epics** | 6 |
-| **Total Tasks** | 24 |
+| **Total Epics** | 7 |
+| **Total Tasks** | 28 |
 | **Tech Stack** | Tauri 2 + React 19 + Tailwind CSS v4 + Rust |
 
 ## Project Description
@@ -71,6 +71,14 @@ A user-friendly desktop security scanner for vibe coders and developers to detec
 | done | UI redesign with monospace-first anti-slop design | high |
 | done | Cross-platform release (macOS .app.zip, Windows portable/installer, Linux AppImage) | critical |
 
+### Epic 7: v0.6 Feature Pack
+| Status | Task | Priority |
+|--------|------|----------|
+| done | Persistent scan history (tauri-plugin-store, hydrate on startup) | high |
+| done | Scan presets (named settings snapshots, built-in + custom) | high |
+| done | Unified export pipeline + PDF generation | medium |
+| done | Local folder scanning MVP (secrets, config exposure, endpoint inventory) | critical |
+
 ---
 
 ## Execution Commands
@@ -87,9 +95,9 @@ A user-friendly desktop security scanner for vibe coders and developers to detec
 
 ## Progress Summary
 
-- **Completed**: 24/24 tasks (100%)
-- **In Progress**: 0/24 tasks (0%)
-- **Todo**: 0/24 tasks (0%)
+- **Completed**: 28/28 tasks (100%)
+- **In Progress**: 0/28 tasks (0%)
+- **Todo**: 0/28 tasks (0%)
 
 ---
 
@@ -100,3 +108,5 @@ A user-friendly desktop security scanner for vibe coders and developers to detec
 | 0.1.0 | 2026-03-05 | MVP — basic scanning, passive scan, dashboard, OWASP detection, macOS build |
 | 0.5.0 | 2026-03-05 | Expanded vuln DB, CMS detection, target intel, exposed services, info disclosure, settings, anti-slop UI, renamed to Chaca |
 | 0.5.0 | 2026-03-12 | Cross-platform GitHub Releases: macOS .app.zip, Windows portable/installer, Linux AppImage |
+| 0.6.0 | 2026-03-12 | v0.6 Feature Pack: persistent history, scan presets, branded PDF export, login-first Pro scan setup, local folder scanning MVP |
+| 0.6.0 | 2026-03-12 | Licensing polish: new Gumroad product link, 7-day post-expiry renewal grace period |

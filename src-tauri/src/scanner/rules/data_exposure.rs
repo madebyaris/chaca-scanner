@@ -28,10 +28,15 @@ fn shannon_entropy(s: &str) -> f64 {
 fn is_html_context(body: &str, match_start: usize) -> bool {
     let prefix_start = match_start.saturating_sub(100);
     let prefix = &body[prefix_start..match_start].to_lowercase();
-    prefix.contains("<input") || prefix.contains("<label") || prefix.contains("<option")
-        || prefix.contains("placeholder") || prefix.contains("aria-label")
-        || prefix.contains("type=\"password\"") || prefix.contains("type='password'")
-        || prefix.contains("<title") || prefix.contains("<meta")
+    prefix.contains("<input")
+        || prefix.contains("<label")
+        || prefix.contains("<option")
+        || prefix.contains("placeholder")
+        || prefix.contains("aria-label")
+        || prefix.contains("type=\"password\"")
+        || prefix.contains("type='password'")
+        || prefix.contains("<title")
+        || prefix.contains("<meta")
 }
 
 pub fn scan_body(body: &str, config: &ScanConfig) -> Vec<DataFinding> {
@@ -60,19 +65,71 @@ fn scan_tier1_secrets(
         (r"(?:AKIA|ASIA)[A-Z0-9]{16}", "AWS Access Key", "aws-key"),
         (r"ghp_[a-zA-Z0-9]{36}", "GitHub PAT", "github-pat"),
         (r"gho_[a-zA-Z0-9]{36}", "GitHub OAuth Token", "github-oauth"),
-        (r"github_pat_[a-zA-Z0-9_]{82}", "GitHub Fine-Grained PAT", "github-fg-pat"),
-        (r"sk-[a-zA-Z0-9]{20}T3BlbkFJ[a-zA-Z0-9]{20}", "OpenAI API Key", "openai-key"),
-        (r"sk-(?:proj-)?[a-zA-Z0-9\-_]{40,}", "OpenAI API Key", "openai-key-v2"),
-        (r"xox[boaprs]-[a-zA-Z0-9\-]{10,}", "Slack Token", "slack-token"),
-        (r"-----BEGIN (?:RSA |EC |DSA )?PRIVATE KEY-----", "Private Key", "private-key"),
-        (r"eyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}", "JWT Token", "jwt"),
-        (r"AIza[a-zA-Z0-9_\-]{35}", "Google API Key", "google-api-key"),
-        (r"sk_live_[a-zA-Z0-9]{24,}", "Stripe Secret Key", "stripe-sk"),
-        (r"pk_live_[a-zA-Z0-9]{24,}", "Stripe Publishable Key", "stripe-pk"),
-        (r"sq0atp-[a-zA-Z0-9\-_]{22}", "Square Access Token", "square-token"),
-        (r"SG\.[a-zA-Z0-9_\-]{22}\.[a-zA-Z0-9_\-]{43}", "SendGrid API Key", "sendgrid-key"),
-        (r#"(?:mongodb(?:\+srv)?://)[^\s"'<>]+:[^\s"'<>]+@[^\s"'<>]+"#, "MongoDB Connection String", "mongodb-uri"),
-        (r#"(?:postgres|mysql|mssql)://[^\s"'<>]+:[^\s"'<>]+@[^\s"'<>]+"#, "Database Connection String", "db-uri"),
+        (
+            r"github_pat_[a-zA-Z0-9_]{82}",
+            "GitHub Fine-Grained PAT",
+            "github-fg-pat",
+        ),
+        (
+            r"sk-[a-zA-Z0-9]{20}T3BlbkFJ[a-zA-Z0-9]{20}",
+            "OpenAI API Key",
+            "openai-key",
+        ),
+        (
+            r"sk-(?:proj-)?[a-zA-Z0-9\-_]{40,}",
+            "OpenAI API Key",
+            "openai-key-v2",
+        ),
+        (
+            r"xox[boaprs]-[a-zA-Z0-9\-]{10,}",
+            "Slack Token",
+            "slack-token",
+        ),
+        (
+            r"-----BEGIN (?:RSA |EC |DSA )?PRIVATE KEY-----",
+            "Private Key",
+            "private-key",
+        ),
+        (
+            r"eyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}",
+            "JWT Token",
+            "jwt",
+        ),
+        (
+            r"AIza[a-zA-Z0-9_\-]{35}",
+            "Google API Key",
+            "google-api-key",
+        ),
+        (
+            r"sk_live_[a-zA-Z0-9]{24,}",
+            "Stripe Secret Key",
+            "stripe-sk",
+        ),
+        (
+            r"pk_live_[a-zA-Z0-9]{24,}",
+            "Stripe Publishable Key",
+            "stripe-pk",
+        ),
+        (
+            r"sq0atp-[a-zA-Z0-9\-_]{22}",
+            "Square Access Token",
+            "square-token",
+        ),
+        (
+            r"SG\.[a-zA-Z0-9_\-]{22}\.[a-zA-Z0-9_\-]{43}",
+            "SendGrid API Key",
+            "sendgrid-key",
+        ),
+        (
+            r#"(?:mongodb(?:\+srv)?://)[^\s"'<>]+:[^\s"'<>]+@[^\s"'<>]+"#,
+            "MongoDB Connection String",
+            "mongodb-uri",
+        ),
+        (
+            r#"(?:postgres|mysql|mssql)://[^\s"'<>]+:[^\s"'<>]+@[^\s"'<>]+"#,
+            "Database Connection String",
+            "db-uri",
+        ),
     ];
 
     for (pattern, data_type, name) in patterns {
@@ -114,9 +171,13 @@ fn scan_tier2_field_values(
                 continue;
             }
             let lower = val.to_lowercase();
-            if lower.contains("example") || lower.contains("placeholder")
-                || lower.contains("your_") || lower.contains("xxx")
-                || lower.contains("test") || lower == "null" || lower == "undefined"
+            if lower.contains("example")
+                || lower.contains("placeholder")
+                || lower.contains("your_")
+                || lower.contains("xxx")
+                || lower.contains("test")
+                || lower == "null"
+                || lower == "undefined"
             {
                 continue;
             }
@@ -174,8 +235,10 @@ fn scan_tier3_pii(
 
                 if name == "email" {
                     let lower = val.to_lowercase();
-                    if lower.ends_with("@example.com") || lower.ends_with("@test.com")
-                        || lower.ends_with("@localhost") || lower.contains("noreply")
+                    if lower.ends_with("@example.com")
+                        || lower.ends_with("@test.com")
+                        || lower.ends_with("@localhost")
+                        || lower.contains("noreply")
                         || lower.contains("no-reply")
                     {
                         continue;

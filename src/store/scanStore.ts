@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { LazyStore } from '@tauri-apps/plugin-store';
 
 export type ScanType = 'passive' | 'active' | 'full';
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
@@ -167,6 +168,18 @@ export interface ActivityLogEntry {
   detail?: string;
 }
 
+const HISTORY_STORE_KEY = 'scan_history';
+const historyStore = new LazyStore('history.json');
+
+async function persistHistory(history: ScanResult[]): Promise<void> {
+  try {
+    await historyStore.set(HISTORY_STORE_KEY, history);
+    await historyStore.save();
+  } catch {
+    // Silently fail in dev/browser context
+  }
+}
+
 interface ScanState {
   url: string;
   scanType: ScanType;
@@ -189,11 +202,12 @@ interface ScanState {
   setView: (view: View) => void;
   loadResult: (result: ScanResult) => void;
   clearHistory: () => void;
+  loadHistory: () => Promise<void>;
   toggleSidebar: () => void;
   reset: () => void;
 }
 
-export const useScanStore = create<ScanState>((set) => ({
+export const useScanStore = create<ScanState>((set, get) => ({
   url: '',
   scanType: 'full',
   isScanning: false,
@@ -238,17 +252,18 @@ export const useScanStore = create<ScanState>((set) => ({
 
     return { progress, activityLog: newLog };
   }),
-  setResult: (result, historyLimit = 50) => set((state) => {
+  setResult: (result, historyLimit = 50) => {
     const timestamp = Date.now();
     const stamped = { ...result, timestamp };
-    return {
+    set((state) => ({
       isScanning: false,
       progress: null,
       result: stamped,
       view: 'dashboard',
       history: [...state.history, stamped].slice(-historyLimit),
-    };
-  }),
+    }));
+    persistHistory(get().history);
+  },
   setError: (error) => set({
     isScanning: false,
     progress: null,
@@ -257,7 +272,20 @@ export const useScanStore = create<ScanState>((set) => ({
   }),
   setView: (view) => set({ view }),
   loadResult: (result) => set({ result, view: 'dashboard' }),
-  clearHistory: () => set({ history: [] }),
+  clearHistory: () => {
+    set({ history: [] });
+    persistHistory([]);
+  },
+  loadHistory: async () => {
+    try {
+      const saved = await historyStore.get<ScanResult[]>(HISTORY_STORE_KEY);
+      if (saved && Array.isArray(saved)) {
+        set({ history: saved });
+      }
+    } catch {
+      // Silently fail in dev/browser context
+    }
+  },
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   reset: () => set({
     url: '',

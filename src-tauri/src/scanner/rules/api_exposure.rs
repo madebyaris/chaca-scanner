@@ -6,7 +6,6 @@ pub fn get_api_exposure_checks() -> Vec<(&'static str, Severity)> {
         ("/debug/pprof", Severity::High),
         ("/debug/vars", Severity::High),
         ("/debug", Severity::High),
-
         // High: admin, internal, private endpoints
         ("/api/admin", Severity::High),
         ("/api/internal", Severity::High),
@@ -17,7 +16,6 @@ pub fn get_api_exposure_checks() -> Vec<(&'static str, Severity)> {
         ("/api/env", Severity::High),
         ("/env", Severity::High),
         ("/config", Severity::High),
-
         // Medium: documentation, introspection, management
         ("/actuator", Severity::Medium),
         ("/actuator/health", Severity::Medium),
@@ -46,7 +44,6 @@ pub fn get_api_exposure_checks() -> Vec<(&'static str, Severity)> {
         ("/wp-json/wp/v2/users", Severity::Medium),
         ("/.well-known/openid-configuration", Severity::Medium),
         ("/trace", Severity::Medium),
-
         // Low: standard API paths and discovery
         ("/api", Severity::Low),
         ("/api/v1", Severity::Low),
@@ -59,7 +56,6 @@ pub fn get_api_exposure_checks() -> Vec<(&'static str, Severity)> {
         ("/crossdomain.xml", Severity::Low),
         ("/clientaccesspolicy.xml", Severity::Low),
         ("/.well-known/security.txt", Severity::Low),
-
         // Info: health/status (expected to be public)
         ("/health", Severity::Info),
         ("/healthz", Severity::Info),

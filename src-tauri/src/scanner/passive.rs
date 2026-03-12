@@ -27,10 +27,12 @@ pub fn analyze_response(
                             category: "API9:2023 - Improper Inventory Management".to_string(),
                             location: url.to_string(),
                             evidence: format!("Server: {}", server_str),
-                            impact: "Attackers can identify server technology and version".to_string(),
-                            remediation: "Configure server to suppress version information".to_string(),
+                            impact: "Attackers can identify server technology and version"
+                                .to_string(),
+                            remediation: "Configure server to suppress version information"
+                                .to_string(),
                             affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                            ..Default::default()
                         });
                     }
                 }
@@ -74,7 +76,7 @@ pub fn analyze_response(
                             impact: "API endpoint identified".to_string(),
                             remediation: "Ensure proper authentication is in place".to_string(),
                             affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                            ..Default::default()
                         });
                     }
                 }
@@ -93,10 +95,11 @@ pub fn analyze_response(
                     location: url.to_string(),
                     evidence: "strict-transport-security header is absent".to_string(),
                     impact: "Users may be vulnerable to SSL stripping attacks".to_string(),
-                    remediation: "Add Strict-Transport-Security: max-age=31536000; includeSubDomains"
-                        .to_string(),
+                    remediation:
+                        "Add Strict-Transport-Security: max-age=31536000; includeSubDomains"
+                            .to_string(),
                     affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                    ..Default::default()
                 });
             }
         }
@@ -115,7 +118,7 @@ pub fn analyze_response(
                     impact: "Browser may MIME-sniff and execute malicious content".to_string(),
                     remediation: "Add X-Content-Type-Options: nosniff".to_string(),
                     affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                    ..Default::default()
                 });
             }
         }
@@ -134,7 +137,7 @@ pub fn analyze_response(
                     impact: "Page may be embedded in iframes (clickjacking risk)".to_string(),
                     remediation: "Add X-Frame-Options: DENY or SAMEORIGIN".to_string(),
                     affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                    ..Default::default()
                 });
             }
         }
@@ -156,9 +159,10 @@ pub fn analyze_response(
                             location: url.to_string(),
                             evidence: format!("CSP: {}", csp_str),
                             impact: "XSS attacks may succeed despite CSP".to_string(),
-                            remediation: "Remove unsafe-inline and unsafe-eval from CSP".to_string(),
+                            remediation: "Remove unsafe-inline and unsafe-eval from CSP"
+                                .to_string(),
                             affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                            ..Default::default()
                         });
                     }
                 }
@@ -175,7 +179,7 @@ pub fn analyze_response(
                     impact: "No protection against XSS and injection attacks".to_string(),
                     remediation: "Add a restrictive Content-Security-Policy header".to_string(),
                     affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                    ..Default::default()
                 });
             }
         }
@@ -225,7 +229,7 @@ pub fn analyze_response(
                                 impact: "API is accessible from any website".to_string(),
                                 remediation: "Restrict to specific origins".to_string(),
                                 affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                                ..Default::default()
                             });
                         }
                     }
@@ -247,7 +251,7 @@ pub fn analyze_response(
                     impact: "Full URL may leak in Referer header to third parties".to_string(),
                     remediation: "Add Referrer-Policy: strict-origin-when-cross-origin".to_string(),
                     affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                    ..Default::default()
                 });
             }
         }
@@ -259,16 +263,19 @@ pub fn analyze_response(
                 vulnerabilities.push(Vulnerability {
                     id: "passive-permissions".to_string(),
                     title: "Missing Permissions-Policy".to_string(),
-                    description: "Permissions-Policy (Feature-Policy) header is not set".to_string(),
+                    description: "Permissions-Policy (Feature-Policy) header is not set"
+                        .to_string(),
                     severity: Severity::Low,
                     confidence: Confidence::Confirmed,
                     category: "API8:2023 - Security Misconfiguration".to_string(),
                     location: url.to_string(),
-                    evidence: "permissions-policy and feature-policy headers are absent".to_string(),
+                    evidence: "permissions-policy and feature-policy headers are absent"
+                        .to_string(),
                     impact: "Browser features may be used without restriction".to_string(),
-                    remediation: "Add Permissions-Policy to restrict unnecessary features".to_string(),
+                    remediation: "Add Permissions-Policy to restrict unnecessary features"
+                        .to_string(),
                     affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                    ..Default::default()
                 });
             }
         }
@@ -286,12 +293,13 @@ pub fn analyze_response(
                             confidence: Confidence::Confirmed,
                             category: "API10:2023 - Unsafe Consumption of API".to_string(),
                             location: url.to_string(),
-                            evidence: "cache-control header is absent for JSON response".to_string(),
+                            evidence: "cache-control header is absent for JSON response"
+                                .to_string(),
                             impact: "Sensitive data may be cached and exposed".to_string(),
                             remediation: "Add Cache-Control: no-store for sensitive responses"
                                 .to_string(),
                             affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                            ..Default::default()
                         });
                     }
                 }
@@ -333,7 +341,7 @@ pub fn analyze_response(
                             remediation: "Add Secure, HttpOnly, and SameSite=Strict to cookies"
                                 .to_string(),
                             affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                            ..Default::default()
                         });
                         break;
                     }
@@ -354,7 +362,8 @@ pub fn analyze_response(
                     || body_lower.contains("__requestverificationtoken")
                     || body_lower.contains("antiforgery");
                 if !has_csrf_token {
-                    let has_post = body_lower.contains("method=\"post\"") || body_lower.contains("method='post'");
+                    let has_post = body_lower.contains("method=\"post\"")
+                        || body_lower.contains("method='post'");
                     if has_post {
                         vulnerabilities.push(Vulnerability {
                             id: "passive-csrf-missing".to_string(),
@@ -380,7 +389,8 @@ pub fn analyze_response(
     if config.passive_clickjack {
         if status == 200 {
             let has_xfo = headers.get("x-frame-options").is_some();
-            let has_frame_ancestors = headers.get("content-security-policy")
+            let has_frame_ancestors = headers
+                .get("content-security-policy")
                 .and_then(|v| v.to_str().ok())
                 .map(|csp| csp.to_lowercase().contains("frame-ancestors"))
                 .unwrap_or(false);
@@ -388,16 +398,19 @@ pub fn analyze_response(
                 vulnerabilities.push(Vulnerability {
                     id: "passive-clickjack".to_string(),
                     title: "Clickjacking: No Frame Protection".to_string(),
-                    description: "Both X-Frame-Options and CSP frame-ancestors are missing".to_string(),
+                    description: "Both X-Frame-Options and CSP frame-ancestors are missing"
+                        .to_string(),
                     severity: Severity::Medium,
                     confidence: Confidence::Confirmed,
                     category: "CWE-1021 - Improper Restriction of Rendered UI Layers".to_string(),
                     location: url.to_string(),
-                    evidence: "Neither X-Frame-Options nor frame-ancestors directive present".to_string(),
+                    evidence: "Neither X-Frame-Options nor frame-ancestors directive present"
+                        .to_string(),
                     impact: "Page can be embedded in iframes for clickjacking attacks".to_string(),
-                    remediation: "Set X-Frame-Options: DENY and CSP frame-ancestors 'none'".to_string(),
+                    remediation: "Set X-Frame-Options: DENY and CSP frame-ancestors 'none'"
+                        .to_string(),
                     affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                    ..Default::default()
                 });
             }
         }
@@ -412,7 +425,8 @@ pub fn analyze_response(
     // ── JWT in Response Body ──
     if config.passive_jwt_analysis {
         if status == 200 {
-            let jwt_re = Regex::new(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}").ok();
+            let jwt_re =
+                Regex::new(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}").ok();
             if let Some(re) = jwt_re {
                 if let Some(m) = re.find(body) {
                     let jwt_str = m.as_str();
@@ -422,35 +436,49 @@ pub fn analyze_response(
                         let engine = base64::engine::general_purpose::URL_SAFE_NO_PAD;
                         if let Ok(header_bytes) = engine.decode(parts[0]) {
                             let header_str = String::from_utf8_lossy(&header_bytes).to_lowercase();
-                            if header_str.contains("\"alg\"") && (header_str.contains("\"none\"") || header_str.contains("\"\"")) {
+                            if header_str.contains("\"alg\"")
+                                && (header_str.contains("\"none\"") || header_str.contains("\"\""))
+                            {
                                 vulnerabilities.push(Vulnerability {
                                     id: "passive-jwt-none-alg".to_string(),
                                     title: "JWT with 'none' Algorithm".to_string(),
-                                    description: "JWT in response uses alg:none — no signature verification".to_string(),
+                                    description:
+                                        "JWT in response uses alg:none — no signature verification"
+                                            .to_string(),
                                     severity: Severity::High,
                                     confidence: Confidence::Confirmed,
                                     category: "API2:2023 - Broken Authentication".to_string(),
                                     location: url.to_string(),
                                     evidence: format!("JWT header: {}", header_str),
                                     impact: "Attackers can forge arbitrary JWT tokens".to_string(),
-                                    remediation: "Reject JWTs with alg:none; enforce RS256 or ES256".to_string(),
+                                    remediation:
+                                        "Reject JWTs with alg:none; enforce RS256 or ES256"
+                                            .to_string(),
                                     affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                                    ..Default::default()
                                 });
                             } else {
                                 vulnerabilities.push(Vulnerability {
                                     id: "passive-jwt-exposed".to_string(),
                                     title: "JWT Token Exposed in Response".to_string(),
-                                    description: "A JWT token was found in the response body".to_string(),
+                                    description: "A JWT token was found in the response body"
+                                        .to_string(),
                                     severity: Severity::Medium,
                                     confidence: Confidence::Firm,
                                     category: "API2:2023 - Broken Authentication".to_string(),
                                     location: url.to_string(),
-                                    evidence: format!("JWT found: {}...{}", &jwt_str[..20.min(jwt_str.len())], &jwt_str[jwt_str.len().saturating_sub(10)..]),
-                                    impact: "Leaked JWTs can be used to impersonate users".to_string(),
-                                    remediation: "Never include JWTs in HTML responses; use HttpOnly cookies".to_string(),
+                                    evidence: format!(
+                                        "JWT found: {}...{}",
+                                        &jwt_str[..20.min(jwt_str.len())],
+                                        &jwt_str[jwt_str.len().saturating_sub(10)..]
+                                    ),
+                                    impact: "Leaked JWTs can be used to impersonate users"
+                                        .to_string(),
+                                    remediation:
+                                        "Never include JWTs in HTML responses; use HttpOnly cookies"
+                                            .to_string(),
                                     affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                                    ..Default::default()
                                 });
                             }
                         }
@@ -463,14 +491,17 @@ pub fn analyze_response(
     // ── Rate Limit Headers Missing ──
     if config.passive_ratelimit_check {
         if status == 200 {
-            let is_api = headers.get("content-type")
+            let is_api = headers
+                .get("content-type")
                 .and_then(|v| v.to_str().ok())
                 .map(|ct| ct.contains("application/json"))
                 .unwrap_or(false);
             if is_api {
                 let has_ratelimit = headers.keys().any(|k| {
                     let name = k.as_str().to_lowercase();
-                    name.starts_with("x-ratelimit") || name.starts_with("ratelimit") || name == "retry-after"
+                    name.starts_with("x-ratelimit")
+                        || name.starts_with("ratelimit")
+                        || name == "retry-after"
                 });
                 if !has_ratelimit {
                     vulnerabilities.push(Vulnerability {
@@ -481,9 +512,13 @@ pub fn analyze_response(
                         confidence: Confidence::Tentative,
                         category: "API4:2023 - Unrestricted Resource Consumption".to_string(),
                         location: url.to_string(),
-                        evidence: "No X-RateLimit-*, RateLimit-*, or Retry-After headers found".to_string(),
-                        impact: "Endpoint may be vulnerable to brute force or denial of service".to_string(),
-                        remediation: "Implement rate limiting and return standard rate-limit headers".to_string(),
+                        evidence: "No X-RateLimit-*, RateLimit-*, or Retry-After headers found"
+                            .to_string(),
+                        impact: "Endpoint may be vulnerable to brute force or denial of service"
+                            .to_string(),
+                        remediation:
+                            "Implement rate limiting and return standard rate-limit headers"
+                                .to_string(),
                         affected_endpoints: vec![url.to_string()],
                         ..Default::default()
                     });
@@ -515,13 +550,18 @@ pub fn analyze_response(
                                     description: format!("{} detected in response body", desc),
                                     severity: Severity::Medium,
                                     confidence: Confidence::Tentative,
-                                    category: "CWE-502 - Deserialization of Untrusted Data".to_string(),
+                                    category: "CWE-502 - Deserialization of Untrusted Data"
+                                        .to_string(),
                                     location: url.to_string(),
                                     evidence: format!("Pattern '{}' matched", pattern),
-                                    impact: "Insecure deserialization may lead to remote code execution".to_string(),
-                                    remediation: "Avoid deserializing untrusted data; use JSON instead".to_string(),
+                                    impact:
+                                        "Insecure deserialization may lead to remote code execution"
+                                            .to_string(),
+                                    remediation:
+                                        "Avoid deserializing untrusted data; use JSON instead"
+                                            .to_string(),
                                     affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                                    ..Default::default()
                                 });
                                 break;
                             }
@@ -536,10 +576,12 @@ pub fn analyze_response(
                             category: "CWE-502 - Deserialization of Untrusted Data".to_string(),
                             location: url.to_string(),
                             evidence: format!("Pattern '{}' matched", pattern),
-                            impact: "Insecure deserialization may lead to remote code execution".to_string(),
-                            remediation: "Avoid deserializing untrusted data; use JSON instead".to_string(),
+                            impact: "Insecure deserialization may lead to remote code execution"
+                                .to_string(),
+                            remediation: "Avoid deserializing untrusted data; use JSON instead"
+                                .to_string(),
                             affected_endpoints: vec![url.to_string()],
-                        ..Default::default()
+                            ..Default::default()
                         });
                         break;
                     }

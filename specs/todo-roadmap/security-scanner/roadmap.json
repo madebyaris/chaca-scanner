@@ -5,10 +5,10 @@
     "description": "A user-friendly desktop security scanner for vibe coders and developers to detect OWASP Top 10 vulnerabilities, API exposure, CMS issues, exposed services, and unrestricted data exposure",
     "sddVersion": "5.0",
     "complexity": "medium",
-    "totalEpics": 6,
-    "totalTasks": 24,
+    "totalEpics": 7,
+    "totalTasks": 28,
     "estimatedDuration": "12 weeks",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "createdAt": "2026-03-05"
   },
   "kanban": {
@@ -68,6 +68,13 @@
       "description": "Settings page, anti-slop UI redesign, macOS build",
       "status": "done",
       "tasks": ["epic-6-task-1", "epic-6-task-2", "epic-6-task-3"]
+    },
+    {
+      "id": "epic-7",
+      "title": "v0.6 Feature Pack",
+      "description": "Persistent history, scan presets, PDF export, local folder scanning MVP",
+      "status": "done",
+      "tasks": ["epic-7-task-1", "epic-7-task-2", "epic-7-task-3", "epic-7-task-4"]
     }
   ],
   "tasks": [
@@ -289,6 +296,50 @@
       "status": "done",
       "parentId": "epic-6",
       "dependencies": ["epic-6-task-2"],
+      "canParallelize": false
+    },
+    {
+      "id": "epic-7-task-1",
+      "title": "Persistent scan history",
+      "description": "Persist history via tauri-plugin-store, hydrate on startup, respect historyLimit",
+      "type": "implementation",
+      "priority": "high",
+      "status": "done",
+      "parentId": "epic-7",
+      "dependencies": ["epic-6-task-3"],
+      "canParallelize": false
+    },
+    {
+      "id": "epic-7-task-2",
+      "title": "Scan presets",
+      "description": "Named presets (ScanSettings snapshots), built-in defaults, preset management in Settings",
+      "type": "implementation",
+      "priority": "high",
+      "status": "done",
+      "parentId": "epic-7",
+      "dependencies": ["epic-7-task-1"],
+      "canParallelize": false
+    },
+    {
+      "id": "epic-7-task-3",
+      "title": "Unified export pipeline + PDF",
+      "description": "Single export path for JSON/CSV/SARIF/PDF, PDF from normalized result model",
+      "type": "implementation",
+      "priority": "medium",
+      "status": "done",
+      "parentId": "epic-7",
+      "dependencies": ["epic-7-task-1"],
+      "canParallelize": false
+    },
+    {
+      "id": "epic-7-task-4",
+      "title": "Local folder scanning MVP",
+      "description": "Secrets, config exposure, endpoint inventory; local-only, no code execution",
+      "type": "implementation",
+      "priority": "critical",
+      "status": "done",
+      "parentId": "epic-7",
+      "dependencies": ["epic-7-task-2", "epic-7-task-3"],
       "canParallelize": false
     }
   ]
