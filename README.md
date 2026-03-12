@@ -110,11 +110,12 @@ Pre-built binaries for **macOS (Apple Silicon)**, **Windows (x64)**, and **Linux
 
 **Expected artifacts:**
 
-| Platform | Artifact |
-|----------|----------|
-| macOS (Apple Silicon) | `Chaca_0.5.0_aarch64.dmg` |
-| Windows (x64) | `Chaca_0.5.0_x64-setup.nsis.exe` |
-| Linux (x64) | `Chaca_0.5.0_amd64.AppImage` |
+| Platform | Artifact | Notes |
+|----------|----------|-------|
+| macOS (Apple Silicon) | `Chaca_0.5.0_aarch64.app.zip` | Unzip and run Chaca.app directly |
+| Windows (x64) | `Chaca_0.5.0_x64-portable.exe` | Run directly; requires [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) on Windows 10 |
+| Windows (x64) | `Chaca_0.5.0_x64-setup.nsis.exe` | Installer (includes WebView2) |
+| Linux (x64) | `Chaca_0.5.0_amd64.AppImage` | Run directly |
 
 **Note:** Current releases are unsigned. macOS and Windows may show security warnings; use "Open Anyway" or allow the app in system settings as needed. Ensure **Settings → Actions → General → Workflow permissions** is set to "Read and write permissions" so the release workflow can create releases.
 
