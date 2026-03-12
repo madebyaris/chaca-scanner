@@ -17,12 +17,23 @@ function computeScores(result: ScanResult) {
   const headerScore = Math.max(0, 100 - headerVulns.length * 15)
   const apiScore = Math.max(0, 100 - result.api_exposures.length * 10)
   const dataScore = Math.max(0, 100 - result.data_exposures.length * 12)
+  const coverageScore = result.metrics?.endpoint_total
+    ? Math.min(
+        100,
+        Math.round(
+          ((result.metrics.active_candidate_total || result.metrics.endpoint_total) /
+            result.metrics.endpoint_total) *
+            100
+        )
+      )
+    : 0
 
   return [
     { label: "SECURITY SCORE", value: score },
     { label: "HEADER SECURITY", value: headerScore },
     { label: "API SECURITY", value: apiScore },
     { label: "DATA PROTECTION", value: dataScore },
+    { label: "ACTIVE COVERAGE", value: coverageScore },
   ]
 }
 

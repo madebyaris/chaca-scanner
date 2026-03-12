@@ -1,10 +1,11 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { useScanStore, type ScanType } from "@/store/scanStore"
 import { useSettingsStore, toScanConfig } from "@/store/settingsStore"
 import { startScan } from "@/api/scan"
 import { Search, ArrowUpRight, AlertTriangle, FileText } from "lucide-react"
 import { DotProgressBar } from "./dashboard/DotProgressBar"
+import { exportByFormat } from "@/utils/export"
 
 const scanTypes: { value: ScanType; label: string; desc: string }[] = [
   { value: "passive", label: "PASSIVE", desc: "Safe header & response analysis" },
@@ -23,8 +24,15 @@ export function ScanInput() {
     setResult,
     setError,
   } = useScanStore()
+  const { loaded, loadSettings } = useSettingsStore()
 
   const [urlError, setUrlError] = useState("")
+
+  useEffect(() => {
+    if (!loaded) {
+      loadSettings()
+    }
+  }, [loaded, loadSettings])
 
   const validateUrl = (value: string): boolean => {
     try {
@@ -54,9 +62,13 @@ export function ScanInput() {
     startScanAction()
 
     try {
-      const config = toScanConfig(useSettingsStore.getState().settings)
+      const settings = useSettingsStore.getState().settings
+      const config = toScanConfig(settings)
       const result = await startScan(normalizedUrl, scanType, config as Record<string, unknown>)
-      setResult(result)
+      setResult(result, settings.historyLimit)
+      if (settings.autoExportOnComplete) {
+        exportByFormat(result, settings.defaultExportFormat)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }

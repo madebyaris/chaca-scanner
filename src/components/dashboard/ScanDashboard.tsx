@@ -5,6 +5,11 @@ import { StatsGrid } from "./StatsGrid"
 import { VulnerabilityGrid } from "./VulnerabilityGrid"
 import { TargetIntelligence } from "./TargetIntelligence"
 import { Search } from "lucide-react"
+import { useMemo } from "react"
+
+function fingerprintFor(value: { fingerprint?: string; id?: string; location?: string }) {
+  return value.fingerprint ?? `${value.id ?? "finding"}:${value.location ?? ""}`
+}
 
 export function ScanDashboard() {
   const { result, history, setView } = useScanStore()
@@ -27,6 +32,21 @@ export function ScanDashboard() {
       </div>
     )
   }
+
+  const baseline = useMemo(() => {
+    const previous = [...history]
+      .reverse()
+      .find((entry) => entry.timestamp !== result.timestamp && entry.url === result.url)
+    if (!previous) {
+      return null
+    }
+
+    const previousFingerprints = new Set(previous.vulnerabilities.map((item) => fingerprintFor(item)))
+    const currentFingerprints = new Set(result.vulnerabilities.map((item) => fingerprintFor(item)))
+    const newCount = [...currentFingerprints].filter((item) => !previousFingerprints.has(item)).length
+    const unchangedCount = [...currentFingerprints].filter((item) => previousFingerprints.has(item)).length
+    return { previous, newCount, unchangedCount }
+  }, [history, result])
 
   return (
     <div className="animate-fade-in">
@@ -65,6 +85,17 @@ export function ScanDashboard() {
         </div>
       </div>
 
+      <div className="grid grid-cols-4 gap-4 px-6 pt-4">
+        <MetricCard label="AUTH STATUS" value={(result.auth_state?.status ?? "anonymous").toUpperCase()} />
+        <MetricCard label="ENDPOINTS" value={String(result.metrics?.endpoint_total ?? result.inventory?.length ?? 0)} />
+        <MetricCard label="REQUESTS" value={String(result.metrics?.request_count ?? 0)} />
+        <MetricCard
+          label="NEW SINCE BASELINE"
+          value={baseline ? String(baseline.newCount) : "N/A"}
+          detail={baseline ? `${baseline.unchangedCount} unchanged` : "No previous scan"}
+        />
+      </div>
+
       {/* Target Intelligence */}
       {result.target_info && (
         <TargetIntelligence info={result.target_info} url={result.url} />
@@ -72,6 +103,16 @@ export function ScanDashboard() {
 
       {/* Vulnerability cards */}
       <VulnerabilityGrid vulnerabilities={result.vulnerabilities} />
+    </div>
+  )
+}
+
+function MetricCard({ label, value, detail }: { label: string; value: string; detail?: string }) {
+  return (
+    <div className="border border-[#e5e5e5] bg-[#ffffff] px-4 py-3">
+      <p className="text-[10px] font-mono tracking-widest text-[#8f8f8f]">{label}</p>
+      <p className="text-[18px] font-mono text-[#191919] font-bold mt-2">{value}</p>
+      {detail && <p className="text-[10px] font-mono text-[#8f8f8f] mt-1">{detail}</p>}
     </div>
   )
 }
