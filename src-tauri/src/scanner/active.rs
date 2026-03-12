@@ -3,8 +3,8 @@ use reqwest::header::LOCATION;
 use tracing::info;
 
 use super::domain::{
-    EndpointInventory, EndpointTag, EvidenceBundle, FindingFingerprint, HttpMethod,
-    InventoryEndpoint, ParameterLocation, RequestContext, ScanRuntime, apply_endpoint_defaults,
+    apply_endpoint_defaults, EndpointInventory, EndpointTag, EvidenceBundle, FindingFingerprint,
+    HttpMethod, InventoryEndpoint, ParameterLocation, RequestContext, ScanRuntime,
 };
 
 struct ResponseSnapshot {
@@ -108,7 +108,9 @@ pub async fn test_inventory(
                 "XSS Enhanced" => test_xss_enhanced(endpoint, runtime, config).await?,
                 "CSRF Verify" => test_csrf_active(endpoint, runtime, config).await?,
                 "GraphQL" => test_graphql(endpoint, runtime, config).await?,
-                "Resource Consumption" => test_resource_consumption(endpoint, &baseline, runtime, config).await?,
+                "Resource Consumption" => {
+                    test_resource_consumption(endpoint, &baseline, runtime, config).await?
+                }
                 _ => Vec::new(),
             };
             vulnerabilities.extend(results);
@@ -136,13 +138,13 @@ async fn fetch_baseline(
     runtime: &ScanRuntime,
     config: &ScanConfig,
 ) -> Option<ResponseSnapshot> {
-    let context =
-        RequestContext::from_scan_config(endpoint.method, &endpoint.url, config).with_label("baseline");
+    let context = RequestContext::from_scan_config(endpoint.method, &endpoint.url, config)
+        .with_label("baseline");
     let response = runtime
         .execute_request(apply_endpoint_defaults(
-          context.into_builder(runtime.client()),
-          endpoint,
-          "baseline",
+            context.into_builder(runtime.client()),
+            endpoint,
+            "baseline",
         ))
         .await
         .ok()?;
@@ -161,9 +163,15 @@ async fn test_bola(
 
     let id_like_params = candidate_params(
         endpoint,
-        &["id", "user", "account", "object", "record", "order", "invoice"],
+        &[
+            "id", "user", "account", "object", "record", "order", "invoice",
+        ],
         &["id", "user_id", "account_id"],
-        &[ParameterLocation::Query, ParameterLocation::Path, ParameterLocation::Form],
+        &[
+            ParameterLocation::Query,
+            ParameterLocation::Path,
+            ParameterLocation::Form,
+        ],
     );
     for param in id_like_params {
         for payload in ["1", "2", "admin", "99999999"] {
@@ -231,7 +239,9 @@ async fn test_ssrf(
     let baseline_has_internal = contains_internal_reference(&baseline_lower);
     let params = candidate_params(
         endpoint,
-        &["url", "uri", "callback", "image", "avatar", "link", "redirect", "endpoint"],
+        &[
+            "url", "uri", "callback", "image", "avatar", "link", "redirect", "endpoint",
+        ],
         &["url", "callback_url", "image_url"],
         &[ParameterLocation::Query, ParameterLocation::Form],
     );
@@ -291,7 +301,9 @@ async fn test_injection(
     let mut vulnerabilities = Vec::new();
     let params = candidate_params(
         endpoint,
-        &["q", "search", "query", "name", "input", "value", "keyword", "term"],
+        &[
+            "q", "search", "query", "name", "input", "value", "keyword", "term",
+        ],
         &["q", "search", "query"],
         &[ParameterLocation::Query, ParameterLocation::Form],
     );
@@ -308,7 +320,9 @@ async fn test_injection(
     ];
 
     for param in &params {
-        if let Some(response) = send_param_probe(endpoint, runtime, config, param, "'", "sqli").await? {
+        if let Some(response) =
+            send_param_probe(endpoint, runtime, config, param, "'", "sqli").await?
+        {
             let lowered = response.body.to_lowercase();
             if let Some(error) = sql_errors.iter().find(|item| lowered.contains(**item)) {
                 let mut evidence = EvidenceBundle::new(
@@ -319,7 +333,10 @@ async fn test_injection(
                 vulnerabilities.push(build_vulnerability(
                     "active-sqli",
                     "SQL Injection (SQLi)",
-                    format!("Parameter '{}' appears to trigger SQL error feedback.", param),
+                    format!(
+                        "Parameter '{}' appears to trigger SQL error feedback.",
+                        param
+                    ),
                     Severity::High,
                     Confidence::Firm,
                     "CWE-89 - SQL Injection",
@@ -346,14 +363,18 @@ async fn test_injection(
             send_param_probe(endpoint, runtime, config, param, xss_payload, "xss").await?
         {
             if response.body.contains(xss_payload) {
-                let mut evidence =
-                    EvidenceBundle::new("A unique HTML canary was reflected without output encoding.");
+                let mut evidence = EvidenceBundle::new(
+                    "A unique HTML canary was reflected without output encoding.",
+                );
                 evidence.push_match("param", param.clone());
                 evidence.push_match("payload", xss_payload.to_string());
                 vulnerabilities.push(build_vulnerability(
                     "active-xss",
                     "Reflected Cross-Site Scripting (XSS)",
-                    format!("Parameter '{}' reflects HTML input back into the response.", param),
+                    format!(
+                        "Parameter '{}' reflects HTML input back into the response.",
+                        param
+                    ),
                     Severity::High,
                     Confidence::Firm,
                     "CWE-79 - Cross-site Scripting",
@@ -448,7 +469,9 @@ async fn test_auth_bypass(
             let status = response.status().as_u16();
             let body = response.text().await.unwrap_or_default();
             let diff = body.len().abs_diff(baseline.len());
-            if status == 200 && (status != baseline.status || diff > config.auth_bypass_diff_threshold) {
+            if status == 200
+                && (status != baseline.status || diff > config.auth_bypass_diff_threshold)
+            {
                 let mut evidence = EvidenceBundle::new(
                     "A spoofed upstream header changed the authentication response shape.",
                 )
@@ -500,7 +523,9 @@ async fn test_open_redirect(
     let mut vulnerabilities = Vec::new();
     let params = candidate_params(
         endpoint,
-        &["redirect", "url", "next", "return", "dest", "goto", "forward", "target"],
+        &[
+            "redirect", "url", "next", "return", "dest", "goto", "forward", "target",
+        ],
         &["redirect", "next", "return_to"],
         &[ParameterLocation::Query, ParameterLocation::Form],
     );
@@ -511,10 +536,19 @@ async fn test_open_redirect(
         .build()?;
 
     for param in params {
-        for payload in ["https://evil.example.com", "//evil.example.com", "/\\evil.example.com"] {
-            let context =
-                RequestContext::from_scan_config(endpoint.method, &endpoint.url, config).with_label("redirect");
-            let builder = apply_param(context.into_builder(&redir_client), endpoint, &param, payload);
+        for payload in [
+            "https://evil.example.com",
+            "//evil.example.com",
+            "/\\evil.example.com",
+        ] {
+            let context = RequestContext::from_scan_config(endpoint.method, &endpoint.url, config)
+                .with_label("redirect");
+            let builder = apply_param(
+                context.into_builder(&redir_client),
+                endpoint,
+                &param,
+                payload,
+            );
             let response = builder.send().await;
             if let Ok(response) = response {
                 if response.status().is_redirection() {
@@ -569,7 +603,9 @@ async fn test_path_traversal(
     let mut vulnerabilities = Vec::new();
     let params = candidate_params(
         endpoint,
-        &["file", "path", "template", "document", "page", "include", "dir", "folder", "load"],
+        &[
+            "file", "path", "template", "document", "page", "include", "dir", "folder", "load",
+        ],
         &["file", "path", "template"],
         &[ParameterLocation::Query, ParameterLocation::Form],
     );
@@ -577,18 +613,23 @@ async fn test_path_traversal(
         for (payload, signatures) in [
             ("../../../etc/passwd", vec!["root:", "daemon:", "bin:"]),
             ("....//....//....//etc/passwd", vec!["root:", "daemon:"]),
-            ("..\\..\\..\\windows\\win.ini", vec!["[extensions]", "[fonts]"]),
+            (
+                "..\\..\\..\\windows\\win.ini",
+                vec!["[extensions]", "[fonts]"],
+            ),
         ] {
             if let Some(response) =
-                send_param_probe(endpoint, runtime, config, &param, payload, "path_traversal").await?
+                send_param_probe(endpoint, runtime, config, &param, payload, "path_traversal")
+                    .await?
             {
                 let lowered = response.body.to_lowercase();
                 if signatures
                     .iter()
                     .any(|signature| lowered.contains(&signature.to_lowercase()))
                 {
-                    let mut evidence =
-                        EvidenceBundle::new("A file path probe returned contents matching a system file.");
+                    let mut evidence = EvidenceBundle::new(
+                        "A file path probe returned contents matching a system file.",
+                    );
                     evidence.push_match("param", param.clone());
                     evidence.push_match("payload", payload.to_string());
                     vulnerabilities.push(build_vulnerability(
@@ -629,10 +670,9 @@ async fn test_cors_reflection(
 ) -> Result<Vec<Vulnerability>, Box<dyn std::error::Error + Send + Sync>> {
     let mut vulnerabilities = Vec::new();
     let evil_origin = "https://evil.example.com";
-    let context =
-        RequestContext::from_scan_config(HttpMethod::Get, &endpoint.url, config)
-            .with_label("cors")
-            .with_header("Origin", evil_origin);
+    let context = RequestContext::from_scan_config(HttpMethod::Get, &endpoint.url, config)
+        .with_label("cors")
+        .with_header("Origin", evil_origin);
     let response = runtime
         .execute_request(context.into_builder(runtime.client()))
         .await;
@@ -691,7 +731,9 @@ async fn test_xss_enhanced(
     let mut vulnerabilities = Vec::new();
     let params = candidate_params(
         endpoint,
-        &["q", "search", "query", "name", "input", "value", "keyword", "comment"],
+        &[
+            "q", "search", "query", "name", "input", "value", "keyword", "comment",
+        ],
         &["q", "search", "query"],
         &[ParameterLocation::Query, ParameterLocation::Form],
     );
@@ -710,7 +752,10 @@ async fn test_xss_enhanced(
                 vulnerabilities.push(build_vulnerability(
                     "active-xss-attr",
                     "XSS via Attribute Injection",
-                    format!("Parameter '{}' appears to inject into HTML attributes.", param),
+                    format!(
+                        "Parameter '{}' appears to inject into HTML attributes.",
+                        param
+                    ),
                     Severity::High,
                     Confidence::Firm,
                     "CWE-79 - Cross-site Scripting",
@@ -737,15 +782,17 @@ async fn test_xss_enhanced(
             send_param_probe(endpoint, runtime, config, param, payload, "xss_event").await?
         {
             if response.body.contains("onerror=alert(73519)") {
-                let mut evidence = EvidenceBundle::new(
-                    "User input was reflected with a live HTML event handler.",
-                );
+                let mut evidence =
+                    EvidenceBundle::new("User input was reflected with a live HTML event handler.");
                 evidence.push_match("param", param.clone());
                 evidence.push_match("payload", payload.to_string());
                 vulnerabilities.push(build_vulnerability(
                     "active-xss-event",
                     "XSS via Event Handler Injection",
-                    format!("Parameter '{}' appears to allow event-handler injection.", param),
+                    format!(
+                        "Parameter '{}' appears to allow event-handler injection.",
+                        param
+                    ),
                     Severity::High,
                     Confidence::Firm,
                     "CWE-79 - Cross-site Scripting",
@@ -779,14 +826,15 @@ async fn test_csrf_active(
         return Ok(vulnerabilities);
     }
     let has_csrf_param = endpoint.parameters.iter().any(|parameter| {
-        parameter.name.to_lowercase().contains("csrf") || parameter.name.to_lowercase().contains("token")
+        parameter.name.to_lowercase().contains("csrf")
+            || parameter.name.to_lowercase().contains("token")
     });
     if has_csrf_param {
         return Ok(vulnerabilities);
     }
 
-    let context =
-        RequestContext::from_scan_config(HttpMethod::Post, &endpoint.url, config).with_label("csrf");
+    let context = RequestContext::from_scan_config(HttpMethod::Post, &endpoint.url, config)
+        .with_label("csrf");
     let response = runtime
         .execute_request(
             context
@@ -798,8 +846,9 @@ async fn test_csrf_active(
     if let Ok(response) = response {
         let status = response.status().as_u16();
         if matches!(status, 200 | 201 | 202 | 204 | 302 | 303) {
-            let mut evidence =
-                EvidenceBundle::new("A state-changing form endpoint accepted a request without a CSRF token.");
+            let mut evidence = EvidenceBundle::new(
+                "A state-changing form endpoint accepted a request without a CSRF token.",
+            );
             evidence.push_status(status);
             vulnerabilities.push(build_vulnerability(
                 "active-csrf-no-token",
@@ -831,13 +880,15 @@ async fn test_graphql(
     config: &ScanConfig,
 ) -> Result<Vec<Vulnerability>, Box<dyn std::error::Error + Send + Sync>> {
     let mut vulnerabilities = Vec::new();
-    if !endpoint.tags.contains(&EndpointTag::GraphQl) && !endpoint.url.to_lowercase().contains("graphql") {
+    if !endpoint.tags.contains(&EndpointTag::GraphQl)
+        && !endpoint.url.to_lowercase().contains("graphql")
+    {
         return Ok(vulnerabilities);
     }
 
     let introspection = r#"{"query":"query IntrospectionQuery { __schema { queryType { name } mutationType { name } } }"}"#;
-    let context =
-        RequestContext::from_scan_config(HttpMethod::Post, &endpoint.url, config).with_label("graphql");
+    let context = RequestContext::from_scan_config(HttpMethod::Post, &endpoint.url, config)
+        .with_label("graphql");
     let response = runtime
         .execute_request(
             context
@@ -887,7 +938,15 @@ async fn test_resource_consumption(
     let mut vulnerabilities = Vec::new();
     let params = candidate_params(
         endpoint,
-        &["limit", "size", "take", "per_page", "page_size", "count", "batch"],
+        &[
+            "limit",
+            "size",
+            "take",
+            "per_page",
+            "page_size",
+            "count",
+            "batch",
+        ],
         &["limit", "size", "take"],
         &[ParameterLocation::Query, ParameterLocation::Form],
     );
@@ -948,7 +1007,12 @@ async fn send_param_probe(
 ) -> Result<Option<ResponseSnapshot>, Box<dyn std::error::Error + Send + Sync>> {
     let context =
         RequestContext::from_scan_config(endpoint.method, &endpoint.url, config).with_label(label);
-    let builder = apply_param(context.into_builder(runtime.client()), endpoint, param, payload);
+    let builder = apply_param(
+        context.into_builder(runtime.client()),
+        endpoint,
+        param,
+        payload,
+    );
     let response = runtime.execute_request(builder).await?;
     let status = response.status().as_u16();
     let body = response.text().await.unwrap_or_default();
@@ -966,7 +1030,12 @@ fn apply_param(
             let mut form_parameters: Vec<(String, String)> = endpoint
                 .parameters
                 .iter()
-                .filter(|parameter| matches!(parameter.location, ParameterLocation::Form | ParameterLocation::Json))
+                .filter(|parameter| {
+                    matches!(
+                        parameter.location,
+                        ParameterLocation::Form | ParameterLocation::Json
+                    )
+                })
                 .map(|parameter| (parameter.name.clone(), "baseline".to_string()))
                 .collect();
             if let Some(existing) = form_parameters.iter_mut().find(|(name, _)| name == param) {

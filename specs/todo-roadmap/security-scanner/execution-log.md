@@ -24,6 +24,10 @@
 | 2026-03-05 | - | Target intelligence | - | IP, DNS, TLS, server, technologies, cookies, well-known files |
 | 2026-03-05 | - | Renamed to Chaca | - | SecureScan → Chaca (Chalim Scanner), v0.5.0 |
 | 2026-03-12 | - | Cross-platform release | - | GitHub Actions: macOS (.app.zip), Windows (portable exe + NSIS), Linux (AppImage) |
+| 2026-03-12 | - | Spec evolution for v0.6 | - | full-prd, quick-prd, roadmap updated with Epic 7 (persistent history, presets, PDF, folder scan MVP) |
+| 2026-03-12 | - | v0.6 Feature Pack implemented | epic-7 | Persistent history (history.json), scan presets (presets.json), PDF export, local folder scanning (secrets, config, endpoints) |
+| 2026-03-12 | - | v0.6.0 released | - | Chaca v0.6.0 — Feature Pack complete |
+| 2026-03-12 | - | Licensing polish | - | New Gumroad product link (chacha-security), 7-day post-expiry renewal grace period |
 
 ## Build Artifacts
 

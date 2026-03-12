@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.5.0-18181b?style=flat-square" alt="version" />
+  <img src="https://img.shields.io/badge/version-0.6.0-18181b?style=flat-square" alt="version" />
   <img src="https://img.shields.io/badge/Tauri-2-18181b?style=flat-square" alt="tauri" />
   <img src="https://img.shields.io/badge/React-19-18181b?style=flat-square" alt="react" />
   <img src="https://img.shields.io/badge/Rust-1.77+-18181b?style=flat-square" alt="rust" />
@@ -23,7 +23,7 @@
 | New Scan | Dashboard | Full Report |
 |:--------:|:----------:|:-----------:|
 | [<img src="assets/home.png" width="280" alt="Chaca New Scan screen" />](assets/home.png) | [<img src="assets/detail.png" width="280" alt="Chaca Dashboard" />](assets/detail.png) | [<img src="assets/list-vuln.png" width="280" alt="Chaca vulnerability list" />](assets/list-vuln.png) |
-| Configure target URL, scan mode (Passive/Active/Full), and launch | Security score, vulnerability trend, target intelligence | Filter by severity, CWE references, export to JSON/CSV |
+| Configure target URL, scan mode (Passive/Active/Full), or scan a local folder | Security score, vulnerability trend, target intelligence | Filter by severity, CWE references, export to JSON/CSV/SARIF/PDF |
 
 ---
 
@@ -56,8 +56,11 @@
 - Dashboard with score, charts, stats, target intelligence panel
 - Report viewer with CWE links and external references
 - Filter by severity and confidence
-- Export to JSON and CSV
-- Settings page (network, crawling, passive, active, data detection, export) with persistent storage
+- Export to JSON, CSV, SARIF, and PDF
+- Persistent scan history across app restarts
+- Scan presets (Quick passive, API audit, Full scan) + custom presets
+- Local folder scanning: secrets, config exposure, endpoint inventory (local-only)
+- Settings page (network, crawling, passive, active, data detection, export, presets) with persistent storage
 
 ---
 
@@ -123,11 +126,18 @@ Pre-built binaries for **macOS (Apple Silicon)**, **Windows (x64)**, and **Linux
 
 ## Usage
 
+### URL Scan
 1. Enter a target URL
 2. Choose **Passive** or **Full** scan
 3. Review dashboard — score, vulnerabilities, target intelligence
 4. Open findings for evidence, remediation, CWE references
-5. Export as JSON or CSV
+5. Export as JSON, CSV, SARIF, or PDF
+
+### Local Folder Scan (v0.6)
+1. Click **SCAN FOLDER** and select a project directory
+2. Chaca scans for: secrets (AWS, GitHub, Stripe, etc.), exposed config files (`.env`, CI, K8s), and endpoint patterns (Express, Next.js, FastAPI)
+3. All scanning is local-only; no content leaves your machine
+4. Results appear in the same dashboard; export as usual
 
 > **Only scan targets you have explicit permission to test.**
 
@@ -148,16 +158,25 @@ src/                    # React frontend
 src-tauri/              # Rust backend
 └── src/
     ├── scanner/
-    │   ├── engine.rs   # Scan orchestrator
-    │   ├── crawler.rs  # URL discovery
-    │   ├── passive.rs  # Passive checks
-    │   ├── active.rs   # Active tests
-    │   ├── cms.rs      # CMS detection
-    │   ├── recon.rs    # Target intelligence
-    │   └── rules/      # api_exposure, data_exposure, info_disclosure,
-    │                   # exposed_services, vuln_db
+    │   ├── engine.rs       # Scan orchestrator
+    │   ├── crawler.rs      # URL discovery
+    │   ├── folder_scanner.rs # Local folder scan (secrets, config, endpoints)
+    │   ├── passive.rs      # Passive checks
+    │   ├── active.rs       # Active tests
+    │   ├── cms.rs          # CMS detection
+    │   ├── recon.rs        # Target intelligence
+    │   └── rules/          # api_exposure, data_exposure, info_disclosure,
+    │                       # exposed_services, vuln_db
     └── lib.rs          # Tauri commands & data structures
 ```
+
+---
+
+## Support
+
+**Chaca Pro** unlocks PDF export, unlimited history, scan profiles, and more. [Get a license](https://madebyaris.gumroad.com/l/chacha-security) to support indie development.
+
+If your subscription expires, you have 7 days to resubscribe before Pro features are disabled — no sudden interruptions.
 
 ---
 

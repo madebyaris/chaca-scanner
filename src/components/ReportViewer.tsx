@@ -4,7 +4,7 @@ import type { ScanResult, Vulnerability, Severity, Confidence } from "@/store/sc
 import { useScanStore } from "@/store/scanStore"
 import { useSettingsStore, toScanConfig } from "@/store/settingsStore"
 import { startScan } from "@/api/scan"
-import { exportCSV, exportJSON, exportSARIF, exportByFormat } from "@/utils/export"
+import { exportCSV, exportJSON, exportSARIF, exportPDF, exportByFormat } from "@/utils/export"
 import { ChevronDown, ChevronRight, RotateCcw } from "lucide-react"
 
 const severityOrder: Severity[] = ["critical", "high", "medium", "low", "info"]
@@ -442,6 +442,12 @@ export function ReportViewer({ result }: ReportViewerProps) {
             className="px-3 py-1 border border-[#e5e5e5] text-[10px] font-mono tracking-widest text-[#525252] hover:border-[#191919] hover:text-[#191919] transition-colors"
           >
             SARIF
+          </button>
+          <button
+            onClick={() => exportPDF(result)}
+            className="px-3 py-1 border border-[#e5e5e5] text-[10px] font-mono tracking-widest text-[#525252] hover:border-[#191919] hover:text-[#191919] transition-colors"
+          >
+            PDF
           </button>
         </div>
       </div>

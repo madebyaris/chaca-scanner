@@ -8,15 +8,25 @@ import { ReportViewer } from "./components/ReportViewer"
 import { SettingsPage } from "./components/settings/SettingsPage"
 import { useScanStore } from "./store/scanStore"
 import { useLicenseStore } from "./store/licenseStore"
+import { usePresetStore } from "./store/presetStore"
 import "./App.css"
 
 function AppContent() {
-  const { view, result, error, isScanning } = useScanStore()
+  const { view, result, error, isScanning, loadHistory } = useScanStore()
   const { loadLicense, loaded: licenseLoaded } = useLicenseStore()
+  const { loadPresets } = usePresetStore()
 
   useEffect(() => {
     if (!licenseLoaded) loadLicense()
   }, [licenseLoaded, loadLicense])
+
+  useEffect(() => {
+    loadHistory()
+  }, [loadHistory])
+
+  useEffect(() => {
+    loadPresets()
+  }, [loadPresets])
 
   return (
     <>
@@ -65,7 +75,7 @@ function AboutPlaceholder() {
         <div className="p-8">
           <div className="flex flex-col gap-3">
             {[
-              { key: "VERSION", value: "0.5.0" },
+              { key: "VERSION", value: "0.6.0" },
               { key: "FRAMEWORK", value: "Tauri 2.x + React 19" },
               { key: "SCANNER", value: "Rust (reqwest + tokio)" },
               { key: "COVERAGE", value: "OWASP API Security Top 10" },

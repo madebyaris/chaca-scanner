@@ -18,6 +18,7 @@
 | Task ID | Feature | Completed |
 |---------|---------|-----------|
 | security-scanner | Chaca v0.5.0 — Web Security Scanner (macOS, Windows, Linux) | 2026-03-05 |
+| epic-7 | Chaca v0.6.0 — Feature Pack (persistent history, presets, PDF, folder scan) | 2026-03-12 |
 | feat-001 | SDD Commands Implementation | 2024-09-19 |
 
 ### Backlog Features

@@ -1,6 +1,6 @@
 [package]
 name = "securescan"
-version = "0.5.0"
+version = "0.6.0"
 description = "A user-friendly security scanner for vibe coders and developers"
 authors = ["Aris Setiawan"]
 edition = "2021"
@@ -26,3 +26,6 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tauri-plugin-store = "2"
 base64 = "0.22"
+walkdir = "2"
+tauri-plugin-dialog = "2"
+chrono = { version = "0.4", features = ["serde"] }

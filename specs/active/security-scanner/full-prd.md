@@ -6,9 +6,9 @@
 
 **Type:** Desktop Application (Tauri 2 + React 19 + Rust)
 
-**Version:** 0.5.0
+**Version:** 0.6.0 (planned)
 
-**Core Summary:** A user-friendly security scanner that enables developers and non-technical "vibe coders" to identify OWASP Top 10 vulnerabilities, API exposure, CMS-specific issues, exposed services, and unrestricted data exposure in their web applications before deployment.
+**Core Summary:** A user-friendly security scanner that enables developers and non-technical "vibe coders" to identify OWASP Top 10 vulnerabilities, API exposure, CMS-specific issues, exposed services, and unrestricted data exposure in their web applications before deployment. v0.6 adds a local-first workflow: persistent scan history, scan presets, PDF export, and project folder scanning. Folder scanning MVP covers secrets, exposed config, and endpoint inventory.
 
 **Target Users:**
 - Developers with basic security awareness
@@ -142,7 +142,39 @@ Create a security scanner that:
 - JSON export with full scan data
 - CSV export for spreadsheet analysis
 
-### 4.2 Scan Flow
+### 4.2 v0.6 Feature Pack (Planned)
+
+#### F15: Persistent Scan History
+- Scan history persists across app restarts via tauri-plugin-store
+- Respects `historyLimit` setting
+- Clear-history behavior preserved
+
+#### F16: Scan Presets
+- Named presets: full `ScanSettings` snapshots plus metadata (name, description, mode)
+- Built-in defaults: Quick passive, API audit, Full scan
+- Preset management in Settings; apply from Scan Input
+
+#### F17: PDF Export
+- PDF report generation from normalized result model
+- Single export pipeline for JSON/CSV/SARIF/PDF
+- Redacted sensitive values in PDF output
+
+#### F18: Local Project Folder Scanning (MVP)
+- **Secrets detection**: Provider-format regexes, keyword prefiltering, entropy heuristics
+- **Config exposure**: `.env`, YAML/TOML/JSON/properties, CI, Docker/Kubernetes/Terraform, private-key-like files
+- **Endpoint inventory**: Static extraction from Next.js, Express, FastAPI, GraphQL patterns; generic URL strings
+- **Sensitive endpoint labeling**: Reuse existing API exposure knowledge base
+- **Local-only**: No content leaves the machine; no code execution; symlinks off by default
+- **Excludes**: `.git`, `node_modules`, `dist`, `.next`, caches, binaries, deep symlinks
+
+**Explicitly excluded from v0.6 folder scan MVP:**
+- Broad SAST / taint analysis
+- Live secret validation against providers
+- Git history scanning or pre-commit hooks
+- Dependency/CVE/SCA scanning
+- Binary/archive/document scanning
+
+### 4.3 Scan Flow
 ```
 1. Launch App
    ↓
@@ -161,7 +193,7 @@ Create a security scanner that:
 8. Export (optional)
 ```
 
-### 4.3 Architecture
+### 4.4 Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -197,6 +229,13 @@ Create a security scanner that:
 └──────────────────────────────────────────────────────────────┘
 ```
 
+### 4.5 Licensing
+
+- **Product/Support Link**: [Chaca - Web Security Scanner PRO](https://madebyaris.gumroad.com/l/chacha-security)
+- **License States**: `active` (valid subscription), `grace` (post-expiry renewal window), `expired` (access ended)
+- **7-Day Renewal Grace**: When a subscription is cancelled or payment fails, users retain Pro access for 7 days. During grace, the UI shows a supportive renewal message and CTA to resubscribe. No sudden interruption.
+- **Refunded/Chargebacked**: Immediately invalid; no grace period.
+
 ---
 
 ## 5. Non-Functional Requirements
@@ -223,12 +262,12 @@ Create a security scanner that:
 
 ---
 
-## 6. Out of Scope (v0.5)
+## 6. Out of Scope (v0.6)
 
 | Feature | Reason |
 |---------|--------|
 | **Authentication integration** | Too complex — user manually tests auth'd endpoints |
-| **Project folder scanning** | Focus on URL/API scanning first |
+| ~~Project folder scanning~~ | v0.6 MVP: secrets, config exposure, endpoint inventory (local-only) |
 | **Continuous monitoring** | Single scan focus |
 | **Team collaboration** | Single user focus |
 | ~~Linux/Windows builds~~ | Implemented — cross-platform releases via GitHub Actions |
@@ -280,6 +319,7 @@ Create a security scanner that:
 |---------|-----------|
 | 0.1.0 | MVP — basic scanning, passive scan, dashboard, OWASP detection, macOS build |
 | 0.5.0 | Expanded vuln database (50+ types), CMS detection, target intelligence, exposed services, info disclosure, comprehensive settings, anti-slop UI redesign, cross-platform GitHub Releases (macOS .app.zip, Windows portable/installer, Linux AppImage) |
+| 0.6.0 | v0.6 Feature Pack: persistent scan history, scan presets, PDF export, local project folder scanning MVP (secrets, config exposure, endpoint inventory) |
 
 ---
 

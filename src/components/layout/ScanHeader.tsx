@@ -1,4 +1,6 @@
 import { useScanStore } from "@/store/scanStore"
+import { useSettingsStore } from "@/store/settingsStore"
+import { exportByFormat } from "@/utils/export"
 import { Search, Download, Share2, Clock, ArrowUpRight } from "lucide-react"
 
 const VIEW_LABELS: Record<string, string> = {
@@ -46,6 +48,7 @@ function ActionButton({ label, icon: Icon, onClick }: ActionButtonProps) {
 
 export function ScanHeader() {
   const { view, result, url, setView } = useScanStore()
+  const { settings } = useSettingsStore()
 
   const viewLabel = VIEW_LABELS[view] || "CHACA"
 
@@ -104,11 +107,7 @@ export function ScanHeader() {
             icon={Download}
             onClick={() => {
               if (!result) return
-              const blob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" })
-              const a = document.createElement("a")
-              a.href = URL.createObjectURL(blob)
-              a.download = `chaca-${result.url.replace(/[^a-z0-9]/gi, "_")}.json`
-              a.click()
+              exportByFormat(result, settings.defaultExportFormat)
             }}
           />
           <ActionButton

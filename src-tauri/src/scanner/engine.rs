@@ -1,8 +1,10 @@
+use super::domain::{
+    apply_endpoint_defaults, FindingFingerprint, HttpMethod, RequestContext, ScanRuntime,
+};
 use crate::{
     ApiExposure, AuthState, DataExposure, ScanConfig, ScanMetrics, ScanProgress, ScanRequest,
     ScanResult, ScanType, Severity, Vulnerability,
 };
-use super::domain::{FindingFingerprint, HttpMethod, RequestContext, ScanRuntime, apply_endpoint_defaults};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering as AtomicOrdering};
 use std::sync::Arc;
@@ -44,7 +46,8 @@ impl ProgressEmitter {
     }
 
     pub fn add_findings(&self, count: u32) {
-        self.findings_count.fetch_add(count, AtomicOrdering::Relaxed);
+        self.findings_count
+            .fetch_add(count, AtomicOrdering::Relaxed);
     }
 
     pub fn findings(&self) -> u32 {
@@ -72,12 +75,13 @@ pub async fn run_scan(
     let emitter = ProgressEmitter::new(app_handle);
 
     let runtime = ScanRuntime::new(config)?;
-    let base_request = RequestContext::from_scan_config(HttpMethod::Get, &request.url, config)
-        .with_label("root");
+    let base_request =
+        RequestContext::from_scan_config(HttpMethod::Get, &request.url, config).with_label("root");
 
     emitter.emit("crawling", 0, 100, "Discovering endpoints...");
     ensure_not_cancelled()?;
-    let mut inventory = super::crawler::crawl_inventory(&request.url, config, &runtime, &emitter).await?;
+    let mut inventory =
+        super::crawler::crawl_inventory(&request.url, config, &runtime, &emitter).await?;
     let endpoint_count = inventory.endpoints.len().max(1) as u32;
     emitter.emit(
         "crawling",
@@ -92,7 +96,13 @@ pub async fn run_scan(
     let mut response_cache: HashMap<String, (u16, reqwest::header::HeaderMap, String)> =
         HashMap::new();
 
-    emitter.emit_detail("recon", 16, 100, "Collecting target intelligence...", "DNS resolution, TLS, headers");
+    emitter.emit_detail(
+        "recon",
+        16,
+        100,
+        "Collecting target intelligence...",
+        "DNS resolution, TLS, headers",
+    );
     ensure_not_cancelled()?;
     let target_info = super::recon::collect_target_info(&request.url, &runtime, config).await;
     info!(
@@ -110,7 +120,13 @@ pub async fn run_scan(
     let mut active_vulnerability_count = 0u32;
 
     let cms_detected = if config.cms_detection {
-        emitter.emit_detail("fingerprint", 18, 100, "Detecting CMS...", "Analyzing response headers and body");
+        emitter.emit_detail(
+            "fingerprint",
+            18,
+            100,
+            "Detecting CMS...",
+            "Analyzing response headers and body",
+        );
         match runtime
             .execute_request(base_request.clone().into_builder(runtime.client()))
             .await
@@ -151,25 +167,28 @@ pub async fn run_scan(
                 HttpMethod::Get | HttpMethod::Head | HttpMethod::Options => endpoint.method,
                 _ => HttpMethod::Options,
             };
-            let context =
-                RequestContext::from_scan_config(passive_method, &endpoint.url, config)
-                    .with_label("passive");
+            let context = RequestContext::from_scan_config(passive_method, &endpoint.url, config)
+                .with_label("passive");
             let request_builder = apply_endpoint_defaults(
                 context.into_builder(runtime.client()),
                 endpoint,
                 "baseline",
             );
-            if let Ok(response) = runtime.execute_request(request_builder).await
-            {
+            if let Ok(response) = runtime.execute_request(request_builder).await {
                 let status = response.status().as_u16();
                 let headers = response.headers().clone();
                 let body = response.text().await.unwrap_or_default();
                 endpoint.last_status = Some(status);
                 endpoint.baseline_length = Some(body.len());
 
-                if !matches!(base_request.auth_profile, super::domain::AuthProfile::Anonymous) {
+                if !matches!(
+                    base_request.auth_profile,
+                    super::domain::AuthProfile::Anonymous
+                ) {
                     let auth_candidate = endpoint.tags.contains(&super::domain::EndpointTag::Admin)
-                        || endpoint.tags.contains(&super::domain::EndpointTag::AuthRelated)
+                        || endpoint
+                            .tags
+                            .contains(&super::domain::EndpointTag::AuthRelated)
                         || endpoint.tags.contains(&super::domain::EndpointTag::Api)
                         || endpoint.url.to_lowercase().contains("/graphql");
                     if auth_candidate && (status == 401 || status == 403) {
@@ -179,7 +198,10 @@ pub async fn run_scan(
                     }
                 }
 
-                response_cache.insert(endpoint.url.clone(), (status, headers.clone(), body.clone()));
+                response_cache.insert(
+                    endpoint.url.clone(),
+                    (status, headers.clone(), body.clone()),
+                );
                 let vulns = super::passive::analyze_response(
                     &endpoint.url,
                     status,
@@ -209,10 +231,15 @@ pub async fn run_scan(
             ensure_not_cancelled()?;
             let test_url = format!("{}{}", base_url, path);
             let api_pct = 52 + (api_i as u32 * 5 / total_api_checks.max(1) as u32);
-            emitter.emit_detail("passive", api_pct, 100, &format!("Probing API path {}/{}", api_i + 1, total_api_checks), path);
-            let context =
-                RequestContext::from_scan_config(HttpMethod::Get, &test_url, config)
-                    .with_label("api_exposure");
+            emitter.emit_detail(
+                "passive",
+                api_pct,
+                100,
+                &format!("Probing API path {}/{}", api_i + 1, total_api_checks),
+                path,
+            );
+            let context = RequestContext::from_scan_config(HttpMethod::Get, &test_url, config)
+                .with_label("api_exposure");
             if let Ok(response) = runtime
                 .execute_request(context.into_builder(runtime.client()))
                 .await
@@ -238,7 +265,13 @@ pub async fn run_scan(
 
         emitter.emit("passive", 58, 100, "Checking for data exposure...");
         for (de_i, endpoint) in inventory.endpoints.iter().enumerate() {
-            emitter.emit_detail("passive", 58, 100, &format!("Scanning response body {}/{}", de_i + 1, endpoint_count), &shorten_url(&endpoint.url));
+            emitter.emit_detail(
+                "passive",
+                58,
+                100,
+                &format!("Scanning response body {}/{}", de_i + 1, endpoint_count),
+                &shorten_url(&endpoint.url),
+            );
             ensure_not_cancelled()?;
             if let Some((_, _, body)) = response_cache.get(&endpoint.url) {
                 let findings = super::rules::data_exposure::scan_body(body, config);
@@ -263,21 +296,40 @@ pub async fn run_scan(
         }
 
         if let Some(ref cms) = cms_detected {
-            emitter.emit_detail("cms", 62, 100, "Running CMS-specific checks...", &format!("{:?}", cms));
+            emitter.emit_detail(
+                "cms",
+                62,
+                100,
+                "Running CMS-specific checks...",
+                &format!("{:?}", cms),
+            );
             ensure_not_cancelled()?;
             let cms_vulns = super::cms::run_cms_checks(cms, &request.url, runtime.client()).await;
             all_vulnerabilities.extend(cms_vulns);
         }
 
         if config.generic_exposure_checks {
-            emitter.emit_detail("generic", 65, 100, "Running generic exposure checks...", ".git, .env, debug endpoints");
+            emitter.emit_detail(
+                "generic",
+                65,
+                100,
+                "Running generic exposure checks...",
+                ".git, .env, debug endpoints",
+            );
             ensure_not_cancelled()?;
-            let generic_vulns = super::cms::run_generic_checks(&request.url, runtime.client()).await;
+            let generic_vulns =
+                super::cms::run_generic_checks(&request.url, runtime.client()).await;
             all_vulnerabilities.extend(generic_vulns);
         }
 
         if config.check_exposed_services {
-            emitter.emit_detail("services", 67, 100, "Checking for exposed services...", "Databases, caches, message queues");
+            emitter.emit_detail(
+                "services",
+                67,
+                100,
+                "Checking for exposed services...",
+                "Databases, caches, message queues",
+            );
             ensure_not_cancelled()?;
             let initial_body = response_cache
                 .get(&request.url)
@@ -293,7 +345,13 @@ pub async fn run_scan(
         }
 
         if config.check_admin_panels {
-            emitter.emit_detail("admin", 68, 100, "Checking for exposed admin panels...", "/admin, /wp-admin, /phpmyadmin");
+            emitter.emit_detail(
+                "admin",
+                68,
+                100,
+                "Checking for exposed admin panels...",
+                "/admin, /wp-admin, /phpmyadmin",
+            );
             ensure_not_cancelled()?;
             let admin_vulns =
                 super::rules::exposed_services::check_admin_panels(&request.url, runtime.client())
@@ -307,24 +365,34 @@ pub async fn run_scan(
     if run_active {
         emitter.emit("active", 70, 100, "Running active vulnerability tests...");
         ensure_not_cancelled()?;
-        let active_vulns = super::active::test_inventory(&inventory, &runtime, config, &emitter).await?;
+        let active_vulns =
+            super::active::test_inventory(&inventory, &runtime, config, &emitter).await?;
         active_vulnerability_count = active_vulns.len() as u32;
         emitter.add_findings(active_vulnerability_count);
         all_vulnerabilities.extend(active_vulns);
         emitter.emit("active", 90, 100, "Active scan complete");
     }
 
-    all_vulnerabilities
-        .retain(|vulnerability| severity_rank(&vulnerability.severity) <= severity_rank(&config.min_severity));
-    all_api_exposures
-        .retain(|exposure| severity_rank(&exposure.severity) <= severity_rank(&config.min_severity));
-    all_data_exposures
-        .retain(|exposure| severity_rank(&exposure.severity) <= severity_rank(&config.min_severity));
+    all_vulnerabilities.retain(|vulnerability| {
+        severity_rank(&vulnerability.severity) <= severity_rank(&config.min_severity)
+    });
+    all_api_exposures.retain(|exposure| {
+        severity_rank(&exposure.severity) <= severity_rank(&config.min_severity)
+    });
+    all_data_exposures.retain(|exposure| {
+        severity_rank(&exposure.severity) <= severity_rank(&config.min_severity)
+    });
 
     emitter.emit("analysis", 92, 100, "Deduplicating findings...");
     let mut deduped = deduplicate_vulnerabilities(all_vulnerabilities);
 
-    emitter.emit_detail("analysis", 95, 100, "Enriching findings with vulnerability database...", "CWE, references, remediation");
+    emitter.emit_detail(
+        "analysis",
+        95,
+        100,
+        "Enriching findings with vulnerability database...",
+        "CWE, references, remediation",
+    );
     enrich_from_vuln_db(&mut deduped);
 
     for vulnerability in &mut deduped {
@@ -332,8 +400,8 @@ pub async fn run_scan(
             vulnerability.rule_id = vulnerability.id.clone();
         }
         if vulnerability.fingerprint.is_empty() {
-            vulnerability.fingerprint = FindingFingerprint::from_vulnerability(vulnerability)
-                .as_dedup_key();
+            vulnerability.fingerprint =
+                FindingFingerprint::from_vulnerability(vulnerability).as_dedup_key();
         }
     }
 
@@ -434,7 +502,10 @@ fn dedupe_data_exposures(exposures: Vec<DataExposure>) -> Vec<DataExposure> {
     let mut seen = HashMap::new();
     for exposure in exposures {
         let key = if exposure.fingerprint.is_empty() {
-            format!("{}|{}|{}", exposure.location, exposure.field, exposure.data_type)
+            format!(
+                "{}|{}|{}",
+                exposure.location, exposure.field, exposure.data_type
+            )
         } else {
             exposure.fingerprint.clone()
         };

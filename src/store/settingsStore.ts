@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { LazyStore } from '@tauri-apps/plugin-store';
 import type { DiscoveryMode, Severity } from './scanStore';
 
-export type SettingsTab = 'network' | 'crawling' | 'passive' | 'active' | 'owasp' | 'export' | 'license';
+export type SettingsTab = 'network' | 'crawling' | 'passive' | 'active' | 'owasp' | 'export' | 'presets' | 'license';
 
 export interface HeaderPair {
   key: string;
@@ -85,7 +85,7 @@ export interface ScanSettings {
   scoreLowCap: number;
 
   // Export
-  defaultExportFormat: 'json' | 'csv' | 'sarif';
+  defaultExportFormat: 'json' | 'csv' | 'sarif' | 'pdf';
   autoExportOnComplete: boolean;
   historyLimit: number;
 }

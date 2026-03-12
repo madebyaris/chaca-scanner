@@ -2,8 +2,10 @@ import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { useScanStore, type ScanType } from "@/store/scanStore"
 import { useSettingsStore, toScanConfig } from "@/store/settingsStore"
-import { startScan } from "@/api/scan"
-import { Search, ArrowUpRight, AlertTriangle, FileText } from "lucide-react"
+import { usePresetStore } from "@/store/presetStore"
+import { startScan, startFolderScan } from "@/api/scan"
+import { open } from "@tauri-apps/plugin-dialog"
+import { Search, ArrowUpRight, AlertTriangle, FileText, FolderOpen } from "lucide-react"
 import { DotProgressBar } from "./dashboard/DotProgressBar"
 import { exportByFormat } from "@/utils/export"
 
@@ -23,16 +25,40 @@ export function ScanInput() {
     startScan: startScanAction,
     setResult,
     setError,
+    history,
   } = useScanStore()
   const { loaded, loadSettings } = useSettingsStore()
+  const { presets, applyPreset } = usePresetStore()
 
   const [urlError, setUrlError] = useState("")
 
   useEffect(() => {
-    if (!loaded) {
-      loadSettings()
-    }
+    if (!loaded) loadSettings()
   }, [loaded, loadSettings])
+
+  const quickPassive = presets.find((p) => p.id === 'quick-passive')
+  const fullScan = presets.find((p) => p.id === 'full-scan')
+  const lastResult = history.length > 0 ? history[history.length - 1] : null
+
+  const handleFolderScan = async () => {
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+      })
+      const path = Array.isArray(selected) ? selected[0] : selected
+      if (!path || typeof path !== 'string') return
+      startScanAction()
+      const settings = useSettingsStore.getState().settings
+      const result = await startFolderScan(path)
+      setResult(result, settings.historyLimit)
+      if (settings.autoExportOnComplete) {
+        exportByFormat(result, settings.defaultExportFormat)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
 
   const validateUrl = (value: string): boolean => {
     try {
@@ -90,7 +116,7 @@ export function ScanInput() {
               MACOS
             </span>
             <span className="px-4 py-1.5 bg-[#191919] text-[#ffffff] text-[10px] font-mono tracking-widest">
-              v0.5.0
+              v0.6.0
             </span>
           </div>
         </div>
@@ -213,40 +239,96 @@ export function ScanInput() {
       </div>
 
       {/* Quick-start cards */}
-      <div className="grid grid-cols-3 gap-4 px-6 py-6">
-        {[
-          { label: "LAST SCAN", title: "SECURITY BASELINE", subtitle: "Use previous target and scan type", icon: Search },
-          { label: "QUICK TEMPLATE", title: "PASSIVE ONLY", subtitle: "Fast headers and exposure checks", icon: FileText },
-          { label: "FULL TEMPLATE", title: "ACTIVE + PASSIVE", subtitle: "Comprehensive vulnerability audit", icon: FileText },
-        ].map((card, i) => {
-          const Icon = card.icon
-          return (
-          <div
-            key={card.label}
-            className="border border-[#e5e5e5] bg-[#ffffff] hover:border-[#191919] transition-colors cursor-pointer group animate-stagger-in"
-            style={{ animationDelay: `${i * 80}ms` }}
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[#e5e5e5]">
-              <span className="text-[10px] font-mono tracking-widest text-[#525252] font-bold">{card.label}</span>
-            </div>
-            <div className="p-4 flex flex-col gap-3">
-              <div className="flex items-start gap-3">
-                <div className="w-7 h-7 border border-[#e5e5e5] flex items-center justify-center shrink-0">
-                  <Icon size={12} className="text-[#525252]" strokeWidth={1.5} />
-                </div>
-                <div>
-                  <p className="text-[11px] font-mono tracking-wide text-[#191919] font-bold leading-tight">
-                    {card.title}
-                  </p>
-                  <p className="text-[10px] font-mono text-[#8f8f8f] mt-0.5">{card.subtitle}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          )
-        })}
+      <div className="grid grid-cols-4 gap-4 px-6 py-6">
+        <QuickCard
+          label="LAST SCAN"
+          title={lastResult ? "SECURITY BASELINE" : "NO PREVIOUS SCAN"}
+          subtitle={lastResult ? `Use ${lastResult.url}` : "Run a scan first"}
+          icon={Search}
+          disabled={!lastResult}
+          onClick={() => {
+            if (lastResult) {
+              setUrl(lastResult.url)
+              setScanType(lastResult.scan_type)
+            }
+          }}
+          index={0}
+        />
+        <QuickCard
+          label="QUICK TEMPLATE"
+          title={quickPassive?.name ?? "PASSIVE ONLY"}
+          subtitle={quickPassive?.description ?? "Fast headers and exposure checks"}
+          icon={FileText}
+          onClick={() => quickPassive && applyPreset(quickPassive.id)}
+          index={1}
+        />
+        <QuickCard
+          label="FULL TEMPLATE"
+          title={fullScan?.name ?? "ACTIVE + PASSIVE"}
+          subtitle={fullScan?.description ?? "Comprehensive vulnerability audit"}
+          icon={FileText}
+          onClick={() => fullScan && applyPreset(fullScan.id)}
+          index={2}
+        />
+        <QuickCard
+          label="SCAN FOLDER"
+          title="LOCAL PROJECT"
+          subtitle="Secrets, config exposure, endpoint inventory"
+          icon={FolderOpen}
+          onClick={handleFolderScan}
+          index={3}
+        />
       </div>
     </>
+  )
+}
+
+function QuickCard({
+  label,
+  title,
+  subtitle,
+  icon: Icon,
+  onClick,
+  disabled,
+  index,
+}: {
+  label: string
+  title: string
+  subtitle: string
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>
+  onClick?: () => void
+  disabled?: boolean
+  index: number
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      onClick={disabled ? undefined : onClick}
+      onKeyDown={(e) => !disabled && (e.key === "Enter" || e.key === " ") && onClick?.()}
+      className={cn(
+        "border border-[#e5e5e5] bg-[#ffffff] transition-colors group animate-stagger-in",
+        disabled ? "opacity-60 cursor-default" : "hover:border-[#191919] cursor-pointer"
+      )}
+      style={{ animationDelay: `${index * 80}ms` }}
+    >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#e5e5e5]">
+        <span className="text-[10px] font-mono tracking-widest text-[#525252] font-bold">{label}</span>
+      </div>
+      <div className="p-4 flex flex-col gap-3">
+        <div className="flex items-start gap-3">
+          <div className="w-7 h-7 border border-[#e5e5e5] flex items-center justify-center shrink-0">
+            <Icon size={12} className="text-[#525252]" strokeWidth={1.5} />
+          </div>
+          <div>
+            <p className="text-[11px] font-mono tracking-wide text-[#191919] font-bold leading-tight">
+              {title}
+            </p>
+            <p className="text-[10px] font-mono text-[#8f8f8f] mt-0.5 truncate max-w-[180px]">{subtitle}</p>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

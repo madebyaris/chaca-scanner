@@ -24,7 +24,18 @@ A user-friendly desktop security scanner that detects OWASP Top 10 vulnerabiliti
 12. **Exposed Services Detection** - Supabase, Firebase, PocketBase, admin panels
 13. **Information Disclosure** - Stack traces, debug headers, file path leaks
 14. **Comprehensive Settings** - Network, crawling, passive, active, data detection, export configuration
-15. **Export** - JSON and CSV
+15. **Export** - JSON, CSV, SARIF, PDF
+16. **Persistent Scan History** - History survives app restart (v0.6)
+17. **Scan Presets** - Quick passive, API audit, Full scan; custom presets (v0.6)
+18. **Local Folder Scanning** - Secrets, config exposure, endpoint inventory from source (v0.6)
+
+---
+
+## v0.6 Feature Pack (Planned)
+- Persistent scan history across restarts
+- Named scan presets (built-in + custom)
+- PDF export
+- Local project folder scanning MVP: secrets, exposed config, endpoint inventory (local-only, no code execution)
 
 ---
 
@@ -39,10 +50,16 @@ A user-friendly desktop security scanner that detects OWASP Top 10 vulnerabiliti
 
 ---
 
-## Out of Scope (v0.5)
+## Licensing
+
+- **Pro License**: [Chaca - Web Security Scanner PRO](https://madebyaris.gumroad.com/l/chacha-security)
+- **7-Day Grace**: After subscription expiry (cancelled/failed payment), Pro access continues for 7 days so users can resubscribe without interruption.
+
+---
+
+## Out of Scope (v0.6)
 
 - Authentication integration
-- Project folder scanning
 - Continuous monitoring
 - Team features
 - Mobile app scanning
@@ -64,3 +81,4 @@ A user-friendly desktop security scanner that detects OWASP Top 10 vulnerabiliti
 
 - **v0.1.0** - MVP: basic scanning, passive scan, dashboard, OWASP detection
 - **v0.5.0** - Expanded vulnerability database (50+ types), CMS detection, target intelligence, exposed services detection, information disclosure, comprehensive settings, anti-slop UI redesign, cross-platform GitHub Releases (macOS .app.zip, Windows portable/installer, Linux AppImage)
+- **v0.6.0** - Persistent scan history, scan presets, PDF export, local project folder scanning MVP (secrets, config exposure, endpoint inventory)

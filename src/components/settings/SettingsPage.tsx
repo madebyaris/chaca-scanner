@@ -12,7 +12,8 @@ import {
   KeyValueRow,
   SettingsSection,
 } from "./SettingsControls"
-import { RotateCcw, Crown, Check, Loader2, AlertCircle, ExternalLink, Sparkles } from "lucide-react"
+import { usePresetStore } from "@/store/presetStore"
+import { RotateCcw, Crown, Check, Loader2, AlertCircle, ExternalLink, Sparkles, Play, Trash2, Plus } from "lucide-react"
 
 const TABS: { id: SettingsTab; label: string; pro?: boolean }[] = [
   { id: "network", label: "NETWORK" },
@@ -21,6 +22,7 @@ const TABS: { id: SettingsTab; label: string; pro?: boolean }[] = [
   { id: "active", label: "ACTIVE SCAN" },
   { id: "owasp", label: "OWASP / DATA" },
   { id: "export", label: "EXPORT" },
+  { id: "presets", label: "PRESETS" },
   { id: "license", label: "LICENSE", pro: true },
 ]
 
@@ -67,6 +69,7 @@ export function SettingsPage() {
         {activeTab === "active" && <ActiveTab />}
         {activeTab === "owasp" && <OwaspDataTab />}
         {activeTab === "export" && <ExportTab />}
+        {activeTab === "presets" && <PresetsTab />}
         {activeTab === "license" && <LicenseTab />}
       </div>
 
@@ -496,12 +499,13 @@ function ExportTab() {
           description="Format used when exporting scan results."
           value={settings.defaultExportFormat}
           onChange={(v) =>
-            updateSettings({ defaultExportFormat: v as "json" | "csv" | "sarif" })
+            updateSettings({ defaultExportFormat: v as "json" | "csv" | "sarif" | "pdf" })
           }
           options={[
             { value: "json", label: "JSON" },
             { value: "csv", label: "CSV" },
             { value: "sarif", label: "SARIF" },
+            { value: "pdf", label: "PDF" },
           ]}
         />
         <ToggleRow
@@ -626,6 +630,105 @@ function ExportTab() {
   )
 }
 
+function PresetsTab() {
+  const { presets, applyPreset, createPreset, deletePreset } = usePresetStore()
+  const [newName, setNewName] = useState("")
+  const [newDesc, setNewDesc] = useState("")
+
+  const handleCreate = () => {
+    const name = newName.trim()
+    if (!name) return
+    createPreset(newName.trim(), newDesc.trim() || undefined)
+    setNewName("")
+    setNewDesc("")
+  }
+
+  return (
+    <>
+      <SettingsSection title="SCAN PRESETS">
+        <p className="text-[10px] font-mono text-[#8f8f8f] mb-4">
+          Apply a preset to load its scan type and settings. Built-in presets cannot be deleted.
+        </p>
+        <div className="space-y-2">
+          {presets.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center justify-between px-4 py-3 border border-[#e5e5e5] bg-[#ffffff]"
+            >
+              <div>
+                <p className="text-[11px] font-mono font-bold text-[#191919]">{p.name}</p>
+                <p className="text-[10px] font-mono text-[#8f8f8f]">{p.description}</p>
+                <span className="text-[9px] font-mono text-[#8f8f8f] mt-1 inline-block">
+                  {p.scanType.toUpperCase()}
+                  {p.isBuiltIn && " · Built-in"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => applyPreset(p.id)}
+                  className="flex items-center gap-1 px-3 py-1.5 border border-[#e5e5e5] text-[10px] font-mono tracking-widest text-[#525252] hover:border-[#191919] hover:text-[#191919] transition-colors"
+                >
+                  <Play size={10} />
+                  APPLY
+                </button>
+                {!p.isBuiltIn && (
+                  <button
+                    onClick={() => deletePreset(p.id)}
+                    className="p-1.5 border border-[#FECACA] text-[#DC2626] hover:bg-[#FEF2F2] transition-colors"
+                    title="Delete preset"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </SettingsSection>
+
+      <SettingsSection title="CREATE PRESET FROM CURRENT SETTINGS">
+        <p className="text-[10px] font-mono text-[#8f8f8f] mb-3">
+          Save your current scan type and settings as a new preset.
+        </p>
+        <div className="flex flex-col gap-3 max-w-md">
+          <div>
+            <label className="block text-[10px] font-mono tracking-widest text-[#525252] font-bold mb-1">
+              NAME
+            </label>
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="My preset"
+              className="w-full px-3 py-2 border border-[#e5e5e5] text-[11px] font-mono text-[#191919] focus:outline-none focus:border-[#191919]"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-mono tracking-widest text-[#525252] font-bold mb-1">
+              DESCRIPTION (OPTIONAL)
+            </label>
+            <input
+              type="text"
+              value={newDesc}
+              onChange={(e) => setNewDesc(e.target.value)}
+              placeholder="Brief description"
+              className="w-full px-3 py-2 border border-[#e5e5e5] text-[11px] font-mono text-[#191919] focus:outline-none focus:border-[#191919]"
+            />
+          </div>
+          <button
+            onClick={handleCreate}
+            disabled={!newName.trim()}
+            className="flex items-center gap-2 px-4 py-2 bg-[#191919] text-white text-[10px] font-mono tracking-widest hover:bg-[#161616] disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-fit"
+          >
+            <Plus size={12} />
+            CREATE PRESET
+          </button>
+        </div>
+      </SettingsSection>
+    </>
+  )
+}
+
 function LicenseTab() {
   const { license, isActivating, activationError, activate, deactivate, isPro, loadLicense, loaded } =
     useLicenseStore()
@@ -673,10 +776,16 @@ function LicenseTab() {
                 </div>
                 <div>
                   <span className="text-[12px] font-mono font-bold text-[#191919] block">
-                    CHACA PRO ACTIVE
+                    {license.status === "grace"
+                      ? "CHACA PRO (RENEWAL GRACE)"
+                      : "CHACA PRO ACTIVE"}
                   </span>
                   <span className="text-[10px] font-mono text-[#8f8f8f]">
-                    Licensed to {license.email}
+                    {license.status === "grace"
+                      ? license.grace_expires_at
+                        ? `Your subscription expired, but you still have access until ${new Date(license.grace_expires_at * 1000).toLocaleDateString()}. Resubscribe to keep Pro features.`
+                        : "Your subscription expired. Resubscribe to keep Pro features."
+                      : `Licensed to ${license.email}`}
                   </span>
                 </div>
               </div>
@@ -694,6 +803,19 @@ function LicenseTab() {
                   </span>
                 </div>
               </div>
+              {license.status === "grace" && (
+                <div className="pt-2 pl-11">
+                  <a
+                    href="https://madebyaris.gumroad.com/l/chacha-security"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-[10px] font-mono tracking-wider text-[#c4a44a] font-bold hover:underline"
+                  >
+                    RESUBSCRIBE TO KEEP PRO
+                    <ExternalLink size={9} />
+                  </a>
+                </div>
+              )}
               <div className="pt-2 pl-11">
                 <button
                   onClick={() => {
@@ -705,6 +827,34 @@ function LicenseTab() {
                 >
                   DEACTIVATE LICENSE
                 </button>
+              </div>
+            </div>
+          ) : license?.status === "expired" ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-[#fef2f2] flex items-center justify-center">
+                  <AlertCircle size={14} className="text-[#DC2626]" />
+                </div>
+                <div>
+                  <span className="text-[12px] font-mono font-bold text-[#191919] block">
+                    GRACE PERIOD ENDED
+                  </span>
+                  <span className="text-[10px] font-mono text-[#8f8f8f]">
+                    Your renewal grace period has ended. Resubscribe to restore Pro features.
+                  </span>
+                </div>
+              </div>
+              <div className="pl-11">
+                <a
+                  href="https://madebyaris.gumroad.com/l/chacha-security"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 text-[10px] font-mono tracking-widest font-bold bg-gradient-to-r from-[#c4a44a] to-[#a08530] text-white hover:from-[#b8993e] hover:to-[#947a2a] transition-all w-fit"
+                >
+                  <Crown size={10} />
+                  RESUBSCRIBE
+                  <ExternalLink size={9} />
+                </a>
               </div>
             </div>
           ) : (
@@ -770,7 +920,7 @@ function LicenseTab() {
 
                 <div className="flex items-center gap-4 pt-1">
                   <a
-                    href="https://madebyaris.gumroad.com/l/chaca-pro"
+                    href="https://madebyaris.gumroad.com/l/chacha-security"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5 text-[10px] font-mono tracking-wider text-[#191919] font-bold hover:underline"
@@ -779,7 +929,7 @@ function LicenseTab() {
                     <ExternalLink size={9} />
                   </a>
                   <span className="text-[10px] font-mono text-[#8f8f8f]">
-                    $5/month or $120 lifetime
+                    $5/month or $50/year
                   </span>
                 </div>
               </div>
@@ -880,7 +1030,7 @@ function LicenseTab() {
                 Support indie development. Ship secure code.
               </span>
               <a
-                href="https://madebyaris.gumroad.com/l/chaca-pro"
+                href="https://madebyaris.gumroad.com/l/chacha-security"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-4 py-2 text-[10px] font-mono tracking-widest font-bold bg-gradient-to-r from-[#c4a44a] to-[#a08530] text-white hover:from-[#b8993e] hover:to-[#947a2a] transition-all"

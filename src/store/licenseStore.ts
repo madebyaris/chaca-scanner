@@ -4,6 +4,8 @@ import { LazyStore } from '@tauri-apps/plugin-store';
 
 export type LicenseTier = 'free' | 'pro';
 
+export type LicenseStatus = 'active' | 'grace' | 'expired';
+
 export interface LicenseInfo {
   license_key: string;
   email: string;
@@ -13,6 +15,19 @@ export interface LicenseInfo {
   uses: number;
   created_at: string;
   verified_at: number;
+  status?: LicenseStatus;
+  expires_at?: number;
+  grace_expires_at?: number;
+  grace_reason?: string;
+}
+
+function isLicenseEligibleForPro(info: LicenseInfo): boolean {
+  if (!info.valid) return false;
+  if (info.status === 'active' || !info.status) return true;
+  if (info.status === 'grace' && info.grace_expires_at) {
+    return Date.now() / 1000 <= info.grace_expires_at;
+  }
+  return false;
 }
 
 export type ProFeature =
@@ -89,7 +104,7 @@ interface LicenseState {
 const STORE_KEY = 'license_info';
 const lazyStore = new LazyStore('license.json');
 
-const GUMROAD_PRODUCT_ID = 'chaca-pro';
+const GUMROAD_PRODUCT_ID = 'lqp4SleZ9pc_znEy6R68Dw==';
 
 export const useLicenseStore = create<LicenseState>((set, get) => ({
   tier: 'free',
@@ -117,7 +132,8 @@ export const useLicenseStore = create<LicenseState>((set, get) => ({
       });
       await lazyStore.set(STORE_KEY, info);
       await lazyStore.save();
-      set({ tier: 'pro', license: info, isActivating: false });
+      const tier = isLicenseEligibleForPro(info) ? 'pro' : 'free';
+      set({ tier, license: info, isActivating: false });
     } catch (err) {
       set({
         isActivating: false,
@@ -140,13 +156,14 @@ export const useLicenseStore = create<LicenseState>((set, get) => ({
   loadLicense: async () => {
     try {
       const saved = await lazyStore.get<LicenseInfo>(STORE_KEY);
-      if (saved && saved.valid) {
+      if (saved) {
         try {
           await invoke('restore_cached_license', { info: saved });
         } catch {
           // Rust side may reject expired cache — that's fine
         }
-        set({ tier: 'pro', license: saved, loaded: true });
+        const tier = isLicenseEligibleForPro(saved) ? 'pro' : 'free';
+        set({ tier, license: saved, loaded: true });
       } else {
         set({ loaded: true });
       }
@@ -165,7 +182,8 @@ export const useLicenseStore = create<LicenseState>((set, get) => ({
       });
       await lazyStore.set(STORE_KEY, info);
       await lazyStore.save();
-      set({ tier: 'pro', license: info });
+      const tier = isLicenseEligibleForPro(info) ? 'pro' : 'free';
+      set({ tier, license: info });
     } catch {
       set({ tier: 'free', license: null });
       await lazyStore.delete(STORE_KEY);

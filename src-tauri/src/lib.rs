@@ -403,21 +403,28 @@ pub struct ScanProgress {
 
 #[tauri::command]
 async fn start_scan(app: tauri::AppHandle, request: ScanRequest) -> Result<ScanResult, String> {
-    info!("Starting scan for URL: {} with type: {:?}", request.url, request.scan_type);
+    info!(
+        "Starting scan for URL: {} with type: {:?}",
+        request.url, request.scan_type
+    );
     reset_scan_cancelled();
 
     let start_time = std::time::Instant::now();
 
-    let result = scanner::run_scan(request, Some(app)).await.map_err(|e| e.to_string())?;
-    
+    let result = scanner::run_scan(request, Some(app))
+        .await
+        .map_err(|e| e.to_string())?;
+
     let duration = start_time.elapsed().as_millis() as u64;
     let mut final_result = result;
     final_result.scan_duration_ms = duration;
-    
-    info!("Scan completed in {}ms with {} vulnerabilities", 
-          duration, 
-          final_result.vulnerabilities.len());
-    
+
+    info!(
+        "Scan completed in {}ms with {} vulnerabilities",
+        duration,
+        final_result.vulnerabilities.len()
+    );
+
     Ok(final_result)
 }
 
@@ -431,7 +438,7 @@ fn cancel_scan() -> Result<(), String> {
 fn get_app_info() -> serde_json::Value {
     serde_json::json!({
         "name": "Chaca",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "description": "Web Security Scanner for vibe coders"
     })
 }
@@ -471,21 +478,29 @@ fn check_pro_feature(_feature: String) -> Result<bool, String> {
     Ok(license::is_pro())
 }
 
+#[tauri::command]
+async fn scan_folder(path: String) -> Result<ScanResult, String> {
+    info!("Starting folder scan: {}", path);
+    scanner::folder_scanner::scan_folder(&path)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tracing_subscriber::fmt()
         .with_env_filter("securescan=info")
         .init();
-    
+
     info!("Starting Chaca application");
-    
+
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .invoke_handler(tauri::generate_handler![
             start_scan,
             cancel_scan,
+            scan_folder,
             get_app_info,
             activate_license,
             deactivate_license,
