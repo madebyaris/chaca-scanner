@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "build:desktop": "npm run build && npm run tauri build"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",

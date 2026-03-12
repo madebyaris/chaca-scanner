@@ -107,7 +107,7 @@ export function ScanHeader() {
               const blob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" })
               const a = document.createElement("a")
               a.href = URL.createObjectURL(blob)
-              a.download = `securescan-${result.url.replace(/[^a-z0-9]/gi, "_")}.json`
+              a.download = `chaca-${result.url.replace(/[^a-z0-9]/gi, "_")}.json`
               a.click()
             }}
           />

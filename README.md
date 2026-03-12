@@ -96,6 +96,28 @@ npm run tauri build
 
 Output: `src-tauri/target/release/bundle/`
 
+### Release (GitHub)
+
+Pre-built binaries for **macOS (Apple Silicon)**, **Windows (x64)**, and **Linux (x64 AppImage)** are published to [GitHub Releases](https://github.com/madebyaris/chaca-scanner/releases) on each version tag.
+
+**To cut a release:**
+
+1. Bump version in `package.json` and `src-tauri/tauri.conf.json`
+2. Commit and push
+3. Create and push a version tag: `git tag v0.5.0 && git push origin v0.5.0`
+4. GitHub Actions builds all platforms and creates a draft release
+5. Edit the draft release, add release notes, and publish
+
+**Expected artifacts:**
+
+| Platform | Artifact |
+|----------|----------|
+| macOS (Apple Silicon) | `Chaca_0.5.0_aarch64.dmg` |
+| Windows (x64) | `Chaca_0.5.0_x64-setup.nsis.exe` |
+| Linux (x64) | `Chaca_0.5.0_amd64.AppImage` |
+
+**Note:** Current releases are unsigned. macOS and Windows may show security warnings; use "Open Anyway" or allow the app in system settings as needed. Ensure **Settings → Actions → General → Workflow permissions** is set to "Read and write permissions" so the release workflow can create releases.
+
 ---
 
 ## Usage
