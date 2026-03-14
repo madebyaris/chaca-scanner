@@ -60,25 +60,6 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
-      - name: Zip macOS app for direct run
-        if: matrix.platform == 'macos-latest'
-        shell: bash
-        run: |
-          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          cd src-tauri/target/aarch64-apple-darwin/release/bundle/macos
-          zip -r Chaca_${VERSION}_aarch64.app.zip Chaca.app
-          mv Chaca_*.app.zip ${{ github.workspace }}/
-
-      - name: Upload macOS app zip
-        if: matrix.platform == 'macos-latest'
-        shell: bash
-        run: |
-          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          TAG="v${VERSION}"
-          gh release upload ${TAG} Chaca_${VERSION}_aarch64.app.zip --clobber
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Upload Windows portable exe
         if: matrix.platform == 'windows-latest'
         shell: bash
