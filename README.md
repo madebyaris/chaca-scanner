@@ -140,7 +140,7 @@ npm run tauri build
 
 Try these steps:
 
-1. Open the `.dmg`
+1. Download the macOS release artifact (`*.app.zip` or `*.app.tar.gz`) and extract it
 2. Drag `Chaca.app` into `Applications`
 3. In Finder, right-click `Chaca.app` and choose `Open`
 4. If macOS still blocks it, go to `System Settings -> Privacy & Security` and click `Open Anyway`
