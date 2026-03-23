@@ -1013,7 +1013,10 @@ async fn send_param_probe(
         param,
         payload,
     );
-    let response = runtime.execute_request(builder).await?;
+    let response = match runtime.execute_request(builder).await {
+        Ok(response) => response,
+        Err(_) => return Ok(None),
+    };
     let status = response.status().as_u16();
     let body = response.text().await.unwrap_or_default();
     Ok(Some(ResponseSnapshot { status, body }))
@@ -1116,4 +1119,74 @@ fn build_vulnerability(
 
 fn contains_internal_reference(body: &str) -> bool {
     body.contains("localhost") || body.contains("127.0.0.1") || body.contains("::1")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    fn endpoint(url: String) -> InventoryEndpoint {
+        InventoryEndpoint {
+            url: url.clone(),
+            normalized_location: super::super::domain::normalize_fingerprint_location(&url),
+            method: HttpMethod::Get,
+            source: super::super::domain::EndpointSource::Seed,
+            tags: vec![EndpointTag::Api],
+            parameters: vec![super::super::domain::EndpointParameter {
+                name: "q".to_string(),
+                location: ParameterLocation::Query,
+            }],
+            depth: 0,
+            last_status: None,
+            baseline_length: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn send_param_probe_returns_none_on_request_errors() {
+        let mut config = ScanConfig::default();
+        config.http_timeout_secs = 1;
+        let runtime = ScanRuntime::new(&config).expect("runtime should initialize");
+        let unreachable = endpoint("http://127.0.0.1:1/probe".to_string());
+
+        let result = send_param_probe(&unreachable, &runtime, &config, "q", "x", "probe")
+            .await
+            .expect("request failures should be skipped");
+
+        assert!(result.is_none(), "failed probes should be skipped");
+    }
+
+    #[tokio::test]
+    async fn send_param_probe_keeps_successful_responses() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("listener should bind");
+        let addr = listener
+            .local_addr()
+            .expect("listener should expose address");
+        let server = tokio::spawn(async move {
+            if let Ok((mut socket, _)) = listener.accept().await {
+                let mut buffer = vec![0u8; 2048];
+                let _ = socket.read(&mut buffer).await;
+                let response =
+                    b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok";
+                let _ = socket.write_all(response).await;
+                let _ = socket.shutdown().await;
+            }
+        });
+
+        let config = ScanConfig::default();
+        let runtime = ScanRuntime::new(&config).expect("runtime should initialize");
+        let live = endpoint(format!("http://{}/probe", addr));
+
+        let result = send_param_probe(&live, &runtime, &config, "q", "x", "probe")
+            .await
+            .expect("successful probes should succeed")
+            .expect("successful probes should return a snapshot");
+
+        assert_eq!(result.status, 200);
+        assert_eq!(result.body, "ok");
+        server.await.expect("server task should complete");
+    }
 }
