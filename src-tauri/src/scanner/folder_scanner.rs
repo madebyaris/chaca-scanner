@@ -87,6 +87,73 @@ fn endpoint_patterns() -> Vec<(&'static str, &'static str)> {
     ]
 }
 
+/// Code smell patterns (rule, regex, severity, CWE label)
+fn code_smell_patterns() -> Vec<(&'static str, &'static str, Severity, &'static str)> {
+    vec![
+        (
+            "folder-weak-crypto",
+            r#"\bmd5\(|\bsha1\(|createHash\(['"]md5|hashlib\.(?:md5|sha1)\b"#,
+            Severity::Medium,
+            "CWE-328 - Use of Weak Hash",
+        ),
+        (
+            "folder-insecure-random",
+            r"Math\.random\(\)|\bmt_rand\(|random\.random\(\)",
+            Severity::Medium,
+            "CWE-330 - Use of Insufficiently Random Values",
+        ),
+        (
+            "folder-xss-sink",
+            r"innerHTML|dangerouslySetInnerHTML|\beval\(",
+            Severity::Medium,
+            "CWE-79 - Cross-site Scripting (XSS)",
+        ),
+        (
+            "folder-plain-http",
+            r#"http://[^\s'"()]{3,}"#,
+            Severity::Info,
+            "CWE-319 - Cleartext Transmission of Sensitive Information",
+        ),
+        (
+            "folder-security-todo",
+            r"(?i)\b(?:TODO|FIXME|XXX|HACK)\b[^\n]{0,80}\b(?:secur|auth|csrf|secret|token|password|sso|oauth|2fa|tls|cookie)\b",
+            Severity::Info,
+            "Maintainability",
+        ),
+    ]
+}
+
+/// Extensions eligible for each code smell rule
+fn smell_extensions(rule_id: &str) -> Option<&'static [&'static str]> {
+    match rule_id {
+        "folder-xss-sink" => Some(&["js", "ts", "jsx", "tsx", "mjs", "cjs", "html", "vue", "svelte"]),
+        "folder-insecure-random" => Some(&["js", "ts", "jsx", "tsx", "mjs", "cjs", "php", "py"]),
+        _ => None,
+    }
+}
+
+fn is_lockfile(name: &str) -> bool {
+    matches!(
+        name,
+        "package-lock.json"
+            | "yarn.lock"
+            | "pnpm-lock.yaml"
+            | "Cargo.lock"
+            | "go.sum"
+            | "composer.lock"
+            | "Gemfile.lock"
+            | "poetry.lock"
+    )
+}
+
+fn redact_value(value: &str) -> String {
+    if value.len() <= 4 {
+        return "***".to_string();
+    }
+    let head: String = value.chars().take(4).collect();
+    format!("{}… ({} chars redacted)", head, value.len())
+}
+
 fn shannon_entropy(s: &str) -> f64 {
     let mut freq = [0u64; 256];
     for b in s.bytes() {
@@ -131,7 +198,60 @@ pub fn scan_folder(path: &str) -> Result<ScanResult, String> {
         .map(|(id, pat)| (id, Regex::new(pat).unwrap()))
         .collect();
 
+    let smell_regexes: Vec<_> = code_smell_patterns()
+        .into_iter()
+        .map(|(id, pat, severity, cwe)| {
+            (
+                id,
+                Regex::new(pat).unwrap(),
+                severity,
+                cwe,
+            )
+        })
+        .collect();
+
     let mut files_scanned = 0u32;
+
+    // Git repository origin (leaks internal repo host / project name)
+    let git_config_path = root.join(".git").join("config");
+    if git_config_path.is_file() {
+        if let Ok(git_config) = fs::read_to_string(&git_config_path) {
+            for line in git_config.lines() {
+                let trimmed = line.trim();
+                if !trimmed.starts_with("url") {
+                    continue;
+                }
+                if let Some(url) = trimmed
+                    .strip_prefix("url")
+                    .and_then(|rest| rest.trim_start().strip_prefix('='))
+                    .map(|url| url.trim().to_string())
+                    .filter(|url| !url.is_empty())
+                {
+                    vulnerabilities.push(Vulnerability {
+                        id: "folder-git-origin".to_string(),
+                        rule_id: "folder-git-origin".to_string(),
+                        fingerprint: "folder-git-origin".to_string(),
+                        title: "Git Origin Remote Detected".to_string(),
+                        description: format!("Repository origin remote: {}", url),
+                        severity: Severity::Info,
+                        confidence: Confidence::Confirmed,
+                        category: "Information Disclosure".to_string(),
+                        location: "file://.git/config".to_string(),
+                        evidence: url,
+                        impact: "Internal repository hosts and project names can leak into build artifacts and error pages."
+                            .to_string(),
+                        remediation: "Keep the .git directory out of distributed builds and artifacts."
+                            .to_string(),
+                        affected_endpoints: vec![],
+                        evidence_items: vec![],
+                        references: vec![],
+                        cwe: "CWE-200".to_string(),
+                    });
+                    break;
+                }
+            }
+        }
+    }
 
     for entry in WalkDir::new(root)
         .follow_links(false)
@@ -158,7 +278,8 @@ pub fn scan_folder(path: &str) -> Result<ScanResult, String> {
             ext,
             "js" | "ts" | "jsx" | "tsx" | "py" | "rb" | "go" | "java" | "kt"
                 | "json" | "yaml" | "yml" | "toml" | "env" | "properties" | "cfg" | "ini"
-                | "tf" | "dockerfile" | "Dockerfile" | "graphql" | "gql"
+                | "tf" | "dockerfile" | "Dockerfile" | "graphql" | "gql" | "html"
+                | "vue" | "svelte" | "php" | "cs" | "rs" | "sh"
         ) || p.file_name().map(|n| n.to_string_lossy().starts_with('.')).unwrap_or(false);
 
         if !is_text {
@@ -199,6 +320,125 @@ pub fn scan_folder(path: &str) -> Result<ScanResult, String> {
                     evidence_items: vec![],
                     references: vec![],
                     cwe: "CWE-798".to_string(),
+                });
+            }
+        }
+
+        // Code smell scan (one finding per rule per file)
+        let file_name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if !is_lockfile(file_name) {
+            let mut seen_smells: HashSet<&str> = HashSet::new();
+            for (rule_id, re, severity, cwe) in &smell_regexes {
+                if seen_smells.contains(rule_id) {
+                    continue;
+                }
+                if let Some(allowed_exts) = smell_extensions(rule_id) {
+                    if !allowed_exts.contains(&ext) {
+                        continue;
+                    }
+                }
+                let Some(cap) = re.captures(&content) else {
+                    continue;
+                };
+                let evidence = cap.get(0).map(|m| m.as_str()).unwrap_or("");
+
+                // Plain-HTTP rule: skip localhost / private-network targets
+                if *rule_id == "folder-plain-http" {
+                    let host = evidence
+                        .strip_prefix("http://")
+                        .and_then(|rest| rest.split(['/', '?', '#']).next())
+                        .unwrap_or("");
+                    let host_lower = host.to_lowercase();
+                    let private = [
+                        "localhost", "127.0.0.1", "0.0.0.0", "192.168.", "10.", "169.254.",
+                    ]
+                    .iter()
+                    .any(|prefix| host_lower.starts_with(prefix));
+                    if private {
+                        continue;
+                    }
+                }
+
+                seen_smells.insert(rule_id);
+                let (title, description, impact, remediation) = match *rule_id {
+                    "folder-weak-crypto" => (
+                        "Weak Hash Function Usage",
+                        format!("Weak hash (md5/sha1) usage found in {}", rel_path),
+                        "Weak hashes are vulnerable to collision and preimage attacks when used for security purposes.",
+                        "Use a strong hash (SHA-256 or better) or a keyed digest (HMAC).",
+                    ),
+                    "folder-insecure-random" => (
+                        "Insecure Pseudo-Random Usage",
+                        format!("Non-cryptographic random source found in {}", rel_path),
+                        "Pseudo-random values are predictable and unsafe for tokens, passwords, or nonces.",
+                        "Use a CSPRNG (e.g., crypto.getRandomValues, secure_random).",
+                    ),
+                    "folder-xss-sink" => (
+                        "Client-Side XSS Sink",
+                        format!("DOM injection sink (innerHTML/eval/dangerouslySetInnerHTML) in {}", rel_path),
+                        "Direct DOM insertion can execute attacker-controlled markup as script.",
+                        "Prefer textContent or escape untrusted values before insertion.",
+                    ),
+                    "folder-plain-http" => (
+                        "Unencrypted http:// URL in Source",
+                        format!("Plain HTTP URL referenced in {}", rel_path),
+                        "Data sent over plain HTTP can be observed or modified in transit.",
+                        "Use HTTPS endpoints for any request that carries sensitive data.",
+                    ),
+                    _ => (
+                        "Security-Related TODO Comment",
+                        format!("Security-related TODO/FIXME comment in {}", rel_path),
+                        "Unresolved security TODOs indicate known or suspected gaps.",
+                        "Track the item to closure or convert it into an issue.",
+                    ),
+                };
+                let snippet: String = evidence.chars().take(80).collect();
+                vulnerabilities.push(Vulnerability {
+                    id: format!("{}-{}", rule_id, files_scanned),
+                    rule_id: (*rule_id).to_string(),
+                    fingerprint: format!("{}:{}", rel_path, rule_id),
+                    title: title.to_string(),
+                    description: description.to_string(),
+                    severity: severity.clone(),
+                    confidence: Confidence::Tentative,
+                    category: "code-quality".to_string(),
+                    location: format!("file://{}", rel_path),
+                    evidence: format!("{}…", snippet.trim()),
+                    impact: impact.to_string(),
+                    remediation: remediation.to_string(),
+                    affected_endpoints: vec![],
+                    evidence_items: vec![],
+                    references: vec![],
+                    cwe: (*cwe).to_string(),
+                });
+            }
+        }
+
+        // .env files: extract KEY=VALUE entries as data exposure
+        if file_name.starts_with(".env") || file_name.ends_with(".env") {
+            for line in content.lines() {
+                let line = line.trim().trim_start_matches("export ").trim();
+                if line.is_empty() || line.starts_with('#') || !line.contains('=') {
+                    continue;
+                }
+                let (key, value) = line.split_once('=').unwrap_or_default();
+                let key = key.trim();
+                let value = value.trim().trim_matches(|c| c == '"' || c == '\'');
+                if key.is_empty() || value.is_empty() {
+                    continue;
+                }
+                let lower_key = key.to_lowercase();
+                let sensitive = ["secret", "key", "token", "pass", "credential", "jwt", "signing"]
+                    .iter()
+                    .any(|needle| lower_key.contains(needle));
+                data_exposures.push(DataExposure {
+                    fingerprint: format!("{}:{}", rel_path, key),
+                    field: key.to_string(),
+                    data_type: "env-value".to_string(),
+                    location: format!("file://{}", rel_path),
+                    severity: if sensitive { Severity::High } else { Severity::Medium },
+                    confidence: Confidence::Firm,
+                    matched_value: redact_value(value),
                 });
             }
         }

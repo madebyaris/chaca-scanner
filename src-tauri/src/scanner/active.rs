@@ -83,6 +83,8 @@ pub async fn test_inventory(
             ("CSRF Verify", config.active_csrf_verify),
             ("GraphQL", config.active_graphql),
             ("Resource Consumption", config.active_resource_consumption),
+            ("Method Tampering", config.active_method_tampering),
+            ("Host Header", config.active_host_header_injection),
         ];
 
         for (check_name, enabled) in checks {
@@ -110,6 +112,20 @@ pub async fn test_inventory(
                 "GraphQL" => test_graphql(endpoint, runtime, config).await?,
                 "Resource Consumption" => {
                     test_resource_consumption(endpoint, &baseline, runtime, config).await?
+                }
+                "Method Tampering" => {
+                    if i < 5 {
+                        test_method_tampering(endpoint, runtime, config).await?
+                    } else {
+                        Vec::new()
+                    }
+                }
+                "Host Header" => {
+                    if i == 0 {
+                        test_host_header_injection(endpoint, runtime, config).await?
+                    } else {
+                        Vec::new()
+                    }
                 }
                 _ => Vec::new(),
             };
@@ -992,6 +1008,155 @@ async fn test_resource_consumption(
                 return Ok(vulnerabilities);
             }
         }
+    }
+
+    Ok(vulnerabilities)
+}
+
+async fn test_method_tampering(
+    endpoint: &InventoryEndpoint,
+    _runtime: &ScanRuntime,
+    config: &ScanConfig,
+) -> Result<Vec<Vulnerability>, Box<dyn std::error::Error + Send + Sync>> {
+    let mut vulnerabilities = Vec::new();
+
+    let probe_client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(std::time::Duration::from_secs(config.http_timeout_secs))
+        .danger_accept_invalid_certs(config.accept_invalid_certs)
+        .build()?;
+
+    // Enumerate allowed methods via OPTIONS
+    let allow = match probe_client
+        .request(reqwest::Method::OPTIONS, &endpoint.url)
+        .send()
+        .await {
+        Ok(response) => response
+            .headers()
+            .get("allow")
+            .and_then(|v| v.to_str().ok())
+            .map(|v| v.to_string()),
+        Err(_) => None,
+    };
+
+    let allow_str = allow.as_deref().unwrap_or("");
+    let trace_allowed = allow_str
+        .split(',')
+        .any(|m| m.trim().eq_ignore_ascii_case("trace"));
+    if !trace_allowed {
+        return Ok(vulnerabilities);
+    }
+
+    // XST probe: TRACE with a canary body
+    let canary = "chaca-xst-canary";
+    let trace_response = probe_client
+        .request(reqwest::Method::TRACE, &endpoint.url)
+        .header("Content-Type", "text/plain")
+        .body(canary.to_string())
+        .send()
+        .await;
+    if let Ok(response) = trace_response {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        if status.is_success() && body.contains(canary) {
+            let mut evidence =
+                EvidenceBundle::new("TRACE is enabled and the request body is echoed back.");
+            evidence.push_status(status.as_u16());
+            evidence.push_match("allow", allow_str.to_string());
+            evidence.push_match("trace-body", body.chars().take(200).collect::<String>());
+            vulnerabilities.push(build_vulnerability(
+                "active-trace-xst",
+                "TRACE Method Enabled (Cross-Site Tracing)",
+                format!(
+                    "Server allows TRACE and echoes the request body on {}",
+                    endpoint.url
+                ),
+                Severity::Medium,
+                Confidence::Firm,
+                "CWE-352 - Cross-Site Request Forgery",
+                endpoint,
+                FindingFingerprint::for_endpoint(
+                    "active-trace-xst",
+                    Severity::Medium,
+                    endpoint.method,
+                    &endpoint.url,
+                ),
+                evidence,
+                "Cross-Site Tracing can leak cookies, headers, and request data to other origins.",
+                "Disable the TRACE method or strip the XST response body.",
+            ));
+        }
+    }
+
+    Ok(vulnerabilities)
+}
+
+async fn test_host_header_injection(
+    endpoint: &InventoryEndpoint,
+    _runtime: &ScanRuntime,
+    config: &ScanConfig,
+) -> Result<Vec<Vulnerability>, Box<dyn std::error::Error + Send + Sync>> {
+    let mut vulnerabilities = Vec::new();
+    const CANARY: &str = "chaca-scan-canary.invalid";
+
+    let probe_client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(std::time::Duration::from_secs(config.http_timeout_secs))
+        .danger_accept_invalid_certs(config.accept_invalid_certs)
+        .build()?;
+
+    let response = match probe_client
+        .get(&endpoint.url)
+        .header("Host", CANARY)
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(_) => return Ok(vulnerabilities),
+    };
+
+    let status = response.status();
+    let location = response
+        .headers()
+        .get("location")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+    let body = response.text().await.unwrap_or_default();
+
+    if location.to_lowercase().contains(CANARY) || body.to_lowercase().contains(CANARY) {
+        let mut evidence =
+            EvidenceBundle::new("Custom Host header value is reflected in the response.");
+        evidence.push_status(status.as_u16());
+        if location.to_lowercase().contains(CANARY) {
+            evidence.push_header("location", location);
+        } else {
+            evidence.push_match(
+                "body",
+                body.chars().take(200).collect::<String>(),
+            );
+        }
+        vulnerabilities.push(build_vulnerability(
+            "active-host-header",
+            "Host Header Injection",
+            format!(
+                "The {} Host header value is reflected in the response on {}",
+                CANARY, endpoint.url
+            ),
+            Severity::Medium,
+            Confidence::Tentative,
+            "CWE-601 - URL Redirection to Untrusted Site in Web Browser",
+            endpoint,
+            FindingFingerprint::for_endpoint(
+                "active-host-header",
+                Severity::Medium,
+                endpoint.method,
+                &endpoint.url,
+            ),
+            evidence,
+            "Reflected Host headers enable password-reset link poisoning, cache poisoning, and subdomain-takeover style attacks.",
+            "Configure the server to ignore the Host header or validate it against the canonical domain.",
+        ));
     }
 
     Ok(vulnerabilities)

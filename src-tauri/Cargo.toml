@@ -1,6 +1,6 @@
 [package]
 name = "securescan"
-version = "0.6.0"
+version = "0.7.0"
 description = "A user-friendly security scanner for vibe coders and developers"
 authors = ["Aris Setiawan"]
 edition = "2021"
@@ -27,5 +27,12 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tauri-plugin-store = "2"
 base64 = "0.22"
 walkdir = "2"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-pki-types = "1"
+webpki-roots = "0.26"
+x509-parser = "0.18"
+
+trust-dns-resolver = "0.23"
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12", "logging"] }
 tauri-plugin-dialog = "2"
 chrono = { version = "0.4", features = ["serde"] }

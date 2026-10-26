@@ -52,6 +52,7 @@ export interface ScanSettings {
   passiveJwtAnalysis: boolean;
   passiveRatelimitCheck: boolean;
   passiveDeserCheck: boolean;
+  passiveExtendedHeaders: boolean;
   cmsDetection: boolean;
   genericExposureChecks: boolean;
   checkExposedServices: boolean;
@@ -69,6 +70,8 @@ export interface ScanSettings {
   activeCsrfVerify: boolean;
   activeGraphql: boolean;
   activeResourceConsumption: boolean;
+  activeMethodTampering: boolean;
+  activeHostHeaderInjection: boolean;
   bolaDiffThreshold: number;
   authBypassDiffThreshold: number;
 
@@ -150,6 +153,7 @@ export const DEFAULT_SETTINGS: ScanSettings = {
   passiveJwtAnalysis: true,
   passiveRatelimitCheck: true,
   passiveDeserCheck: true,
+  passiveExtendedHeaders: true,
   cmsDetection: true,
   genericExposureChecks: true,
   checkExposedServices: true,
@@ -166,6 +170,8 @@ export const DEFAULT_SETTINGS: ScanSettings = {
   activeCsrfVerify: true,
   activeGraphql: true,
   activeResourceConsumption: true,
+  activeMethodTampering: true,
+  activeHostHeaderInjection: true,
   bolaDiffThreshold: 50,
   authBypassDiffThreshold: 100,
 
@@ -241,6 +247,7 @@ export function toScanConfig(s: ScanSettings) {
     passive_jwt_analysis: s.passiveJwtAnalysis,
     passive_ratelimit_check: s.passiveRatelimitCheck,
     passive_deser_check: s.passiveDeserCheck,
+    passive_extended_headers: s.passiveExtendedHeaders,
     cms_detection: s.cmsDetection,
     generic_exposure_checks: s.genericExposureChecks,
     check_exposed_services: s.checkExposedServices,
@@ -256,6 +263,8 @@ export function toScanConfig(s: ScanSettings) {
     active_csrf_verify: s.activeCsrfVerify,
     active_graphql: s.activeGraphql,
     active_resource_consumption: s.activeResourceConsumption,
+    active_method_tampering: s.activeMethodTampering,
+    active_host_header_injection: s.activeHostHeaderInjection,
     bola_diff_threshold: s.bolaDiffThreshold,
     auth_bypass_diff_threshold: s.authBypassDiffThreshold,
     entropy_threshold: s.entropyThreshold,

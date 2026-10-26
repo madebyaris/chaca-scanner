@@ -110,3 +110,4 @@ A user-friendly desktop security scanner for vibe coders and developers to detec
 | 0.5.0 | 2026-03-12 | Cross-platform GitHub Releases: macOS .app.zip, Windows portable/installer, Linux AppImage |
 | 0.6.0 | 2026-03-12 | v0.6 Feature Pack: persistent history, scan presets, branded PDF export, login-first Pro scan setup, local folder scanning MVP |
 | 0.6.0 | 2026-03-12 | Licensing polish: new Gumroad product link, 7-day post-expiry renewal grace period |
+| 0.7.0 | 2026-10-26 | v0.7 Capability Pack: TLS certificate probe (protocol, issuer, SAN, expiry), typed DNS record collection (A/AAAA/MX/NS/SOA/TXT), extended passive header checks, TRACE/XST and Host header active tests, folder code-smell scanning |

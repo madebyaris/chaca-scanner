@@ -74,6 +74,7 @@ pub struct ScanConfig {
     pub passive_jwt_analysis: bool,
     pub passive_ratelimit_check: bool,
     pub passive_deser_check: bool,
+    pub passive_extended_headers: bool,
     pub cms_detection: bool,
     pub generic_exposure_checks: bool,
     pub check_exposed_services: bool,
@@ -91,6 +92,8 @@ pub struct ScanConfig {
     pub active_csrf_verify: bool,
     pub active_graphql: bool,
     pub active_resource_consumption: bool,
+    pub active_method_tampering: bool,
+    pub active_host_header_injection: bool,
     pub bola_diff_threshold: usize,
     pub auth_bypass_diff_threshold: usize,
 
@@ -164,6 +167,7 @@ impl Default for ScanConfig {
             passive_jwt_analysis: true,
             passive_ratelimit_check: true,
             passive_deser_check: true,
+            passive_extended_headers: true,
             cms_detection: true,
             generic_exposure_checks: true,
             check_exposed_services: true,
@@ -180,6 +184,8 @@ impl Default for ScanConfig {
             active_csrf_verify: true,
             active_graphql: true,
             active_resource_consumption: true,
+            active_method_tampering: true,
+            active_host_header_injection: true,
             bola_diff_threshold: 50,
             auth_bypass_diff_threshold: 100,
 
@@ -267,6 +273,12 @@ pub struct TargetInfo {
     pub redirect_chain: Vec<String>,
     pub tls_issuer: String,
     pub tls_protocol: String,
+    #[serde(default)]
+    pub tls_san: Vec<String>,
+    #[serde(default)]
+    pub tls_not_after: String,
+    #[serde(default)]
+    pub tls_days_to_expiry: i64,
     pub response_headers: Vec<HeaderPair>,
     pub cookies: Vec<CookieInfo>,
     pub technologies: Vec<String>,
@@ -450,7 +462,7 @@ fn cancel_scan() -> Result<(), String> {
 fn get_app_info() -> serde_json::Value {
     serde_json::json!({
         "name": "Chaca",
-        "version": "0.6.0",
+        "version": "0.7.0",
         "description": "Web Security Scanner for vibe coders"
     })
 }

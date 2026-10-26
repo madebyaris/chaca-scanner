@@ -6,6 +6,7 @@ pub mod engine;
 pub mod folder_scanner;
 pub mod passive;
 pub mod recon;
+pub mod tls_probe;
 pub mod rules;
 
 pub use active::*;
@@ -16,4 +17,5 @@ pub use engine::*;
 pub use folder_scanner::*;
 pub use passive::*;
 pub use recon::*;
+pub use tls_probe::*;
 pub use rules::*;

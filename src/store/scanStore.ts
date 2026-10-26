@@ -104,6 +104,9 @@ export interface TargetInfo {
   redirect_chain: string[];
   tls_issuer: string;
   tls_protocol: string;
+  tls_san?: string[];
+  tls_not_after?: string;
+  tls_days_to_expiry?: number;
   response_headers: HeaderPair[];
   cookies: CookieInfo[];
   technologies: string[];

@@ -31,7 +31,37 @@ pub async fn collect_target_info(
             .into_iter()
             .collect();
         info.ip_addresses = unique;
-        info.dns_records = info.ip_addresses.clone();
+    }
+
+    // Typed DNS records (A/AAAA/CNAME/MX/NS/SOA/TXT) via the local resolver
+    if !host.is_empty() && host.parse::<std::net::IpAddr>().is_err() {
+        let dns = collect_dns_records(&host).await;
+        info.dns_records = dns.records;
+        if info.ip_addresses.is_empty() {
+            info.ip_addresses = dns.ips;
+        }
+    }
+    if info.dns_records.is_empty() {
+        info.dns_records = info
+            .ip_addresses
+            .iter()
+            .map(|ip| format!("A: {ip}"))
+            .collect();
+    }
+
+    // TLS certificate probe (protocol, issuer, SAN, expiry)
+    if parsed.scheme() == "https" {
+        let tls_host = host.clone();
+        let tls_port = parsed.port().unwrap_or(443);
+        let accept_invalid_certs = config.accept_invalid_certs;
+        let tls = super::tls_probe::probe(&tls_host, tls_port, accept_invalid_certs).await;
+        if let Some(probe) = tls {
+            info.tls_protocol = probe.protocol;
+            info.tls_issuer = probe.issuer;
+            info.tls_san = probe.san;
+            info.tls_not_after = probe.not_after;
+            info.tls_days_to_expiry = probe.days_to_expiry;
+        }
     }
 
     // Build a no-redirect client to capture redirect chain
@@ -222,6 +252,99 @@ pub async fn collect_target_info(
     info.response_time_ms = start.elapsed().as_millis() as u64;
 
     info
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct DnsCollection {
+    pub records: Vec<String>,
+    pub ips: Vec<String>,
+}
+
+pub(crate) async fn collect_dns_records(host: &str) -> DnsCollection {
+    let host = host.to_string();
+    let fut = tokio::task::spawn_blocking(move || blocking_dns_lookup(&host));
+    tokio::time::timeout(std::time::Duration::from_secs(20), fut)
+        .await
+        .ok()
+        .and_then(|result| result.ok())
+        .unwrap_or(DnsCollection {
+            records: Vec::new(),
+            ips: Vec::new(),
+        })
+}
+
+fn blocking_dns_lookup(host: &str) -> DnsCollection {
+    use std::time::Duration;
+    use trust_dns_resolver::system_conf::read_system_conf;
+    use trust_dns_resolver::Resolver;
+
+    let empty = || DnsCollection {
+        records: Vec::new(),
+        ips: Vec::new(),
+    };
+    let Ok((config, mut opts)) = read_system_conf() else {
+        return empty();
+    };
+    opts.timeout = Duration::from_secs(2);
+    opts.attempts = 2;
+    let Ok(resolver) = Resolver::new(config, opts) else {
+        return empty();
+    };
+
+    let mut records = Vec::new();
+    let mut ips = Vec::new();
+
+    if let Ok(a) = resolver.ipv4_lookup(host) {
+        for r in a {
+            ips.push(r.0.to_string());
+            records.push(format!("A: {}", r.0));
+        }
+    }
+    if let Ok(aaaa) = resolver.ipv6_lookup(host) {
+        for r in aaaa {
+            ips.push(r.0.to_string());
+            records.push(format!("AAAA: {}", r.0));
+        }
+    }
+    if let Ok(mx) = resolver.mx_lookup(host) {
+        for r in mx.into_iter().take(5) {
+            let exchange = r.exchange().to_string().trim_end_matches('.').to_string();
+            if exchange.is_empty() {
+                continue;
+            }
+            records.push(format!("MX ({}): {}", r.preference(), exchange));
+        }
+    }
+    if let Ok(ns) = resolver.ns_lookup(host) {
+        for r in ns.into_iter().take(4) {
+            records.push(format!("NS: {}", r.to_string().trim_end_matches('.')));
+        }
+    }
+    if let Ok(soa) = resolver.soa_lookup(host) {
+        if let Some(r) = soa.iter().next() {
+            records.push(format!(
+                "SOA: {} ({})",
+                r.mname().to_string().trim_end_matches('.'),
+                r.rname().to_string().trim_end_matches('.')
+            ));
+        }
+    }
+    if let Ok(txt) = resolver.txt_lookup(host) {
+        for r in txt.into_iter().take(2) {
+            let data: Vec<String> = r
+                .txt_data()
+                .iter()
+                .map(|chunk| String::from_utf8_lossy(chunk).into_owned())
+                .collect();
+            let data = data.join(" ");
+            if data.len() > 120 {
+                records.push(format!("TXT: {}…", data.chars().take(120).collect::<String>()));
+            } else {
+                records.push(format!("TXT: {data}"));
+            }
+        }
+    }
+    DnsCollection { records, ips }
 }
 
 fn parse_cookie(raw: &str) -> CookieInfo {

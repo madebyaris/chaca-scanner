@@ -111,6 +111,16 @@ export function TargetIntelligence({ info }: TargetIntelligenceProps) {
         {info.framework && <QuickChip label="FRAMEWORK" value={info.framework} />}
         {info.language && <QuickChip label="LANG" value={info.language} />}
         {info.waf_detected && <QuickChip label="WAF" value={info.waf_detected} />}
+        {info.tls_protocol && (
+          <QuickChip
+            label="TLS"
+            value={
+              typeof info.tls_days_to_expiry === "number"
+                ? `${info.tls_protocol} · ${info.tls_days_to_expiry < 0 ? "EXPIRED" : `${info.tls_days_to_expiry}d`}`
+                : info.tls_protocol
+            }
+          />
+        )}
         <QuickChip label="HTTP" value={`${info.status_code} ${info.http_version}`} />
       </div>
 
@@ -125,8 +135,6 @@ export function TargetIntelligence({ info }: TargetIntelligenceProps) {
         {info.hosting_provider && <InfoRow label="HOSTING" value={info.hosting_provider} />}
         {info.waf_detected && <InfoRow label="WAF / FIREWALL" value={info.waf_detected} />}
         {info.os_hint && <InfoRow label="OS HINT" value={info.os_hint} />}
-        {info.tls_protocol && <InfoRow label="TLS PROTOCOL" value={info.tls_protocol} />}
-        {info.tls_issuer && <InfoRow label="TLS ISSUER" value={info.tls_issuer} />}
         {info.favicon_hash && <InfoRow label="FAVICON HASH" value={info.favicon_hash} />}
         {hasRedirects && (
           <div className="mt-2">
@@ -146,6 +154,40 @@ export function TargetIntelligence({ info }: TargetIntelligenceProps) {
           </div>
         )}
       </Section>
+
+      {(info.tls_protocol || info.tls_issuer || info.tls_not_after) && (
+        <Section icon={Lock} title="TLS & CERTIFICATE">
+          {info.tls_protocol && <InfoRow label="PROTOCOL" value={info.tls_protocol} />}
+          {info.tls_issuer && <InfoRow label="ISSUER" value={info.tls_issuer} />}
+          {info.tls_not_after && (
+            <div className="flex items-start gap-3 py-1.5">
+              <span className="text-[10px] font-mono tracking-wider text-[#8f8f8f] w-[140px] shrink-0 uppercase">
+                EXPIRES
+              </span>
+              <span className="text-[11px] text-[#191919] font-mono break-all">
+                {info.tls_not_after}
+                {typeof info.tls_days_to_expiry === "number" && (
+                  <span
+                    className={cn(
+                      "ml-2 px-1.5 py-0.5 text-[8px] font-mono tracking-widest font-bold border align-middle",
+                      info.tls_days_to_expiry < 0
+                        ? "text-[#DC2626] bg-[#FEF2F2] border-[#FECACA]"
+                        : info.tls_days_to_expiry <= 30
+                          ? "text-[#CA8A04] bg-[#FEFCE8] border-[#FEF08A]"
+                          : "text-[#288034] bg-[#F0FDF4] border-[#BBF7D0]"
+                    )}
+                  >
+                    {info.tls_days_to_expiry < 0 ? "EXPIRED" : `${info.tls_days_to_expiry} DAYS`}
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
+          {info.tls_san && info.tls_san.length > 0 && (
+            <InfoRow label="SAN" value={info.tls_san.join(", ")} />
+          )}
+        </Section>
+      )}
 
       <Section icon={Server} title="SERVER & STACK">
         <InfoRow label="SERVER" value={info.server} />

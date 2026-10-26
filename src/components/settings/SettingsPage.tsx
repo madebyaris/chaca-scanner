@@ -353,6 +353,7 @@ function PassiveTab() {
     { key: "passiveJwtAnalysis", label: "JWT ANALYSIS", desc: "Detect JWT tokens in responses; check for alg:none" },
     { key: "passiveRatelimitCheck", label: "RATE LIMIT HEADERS", desc: "Check API endpoints for rate-limiting headers" },
     { key: "passiveDeserCheck", label: "DESERIALIZATION INDICATORS", desc: "Detect serialized objects (Java, PHP, .NET) in responses" },
+    { key: "passiveExtendedHeaders", label: "EXTENDED HEADER CHECKS", desc: "Weak HSTS, deprecated X-XSS-Protection, SameSite=None without Secure" },
   ]
 
   const allOn = checks.every((c) => settings[c.key] === true)
@@ -484,6 +485,18 @@ function ActiveTab() {
           description="Probe pagination and batch-like parameters for missing server-side limits."
           value={settings.activeResourceConsumption}
           onChange={(v) => updateSettings({ activeResourceConsumption: v })}
+        />
+        <ToggleRow
+          label="METHOD TAMPERING"
+          description="Enumerate allowed methods and probe TRACE for Cross-Site Tracing (XST)."
+          value={settings.activeMethodTampering}
+          onChange={(v) => updateSettings({ activeMethodTampering: v })}
+        />
+        <ToggleRow
+          label="HOST HEADER INJECTION"
+          description="Send a canary Host header and check if it is reflected in the response."
+          value={settings.activeHostHeaderInjection}
+          onChange={(v) => updateSettings({ activeHostHeaderInjection: v })}
         />
       </SettingsSection>
 

@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.6.0-18181b?style=flat-square" alt="version" />
+  <img src="https://img.shields.io/badge/version-0.7.0-18181b?style=flat-square" alt="version" />
   <img src="https://img.shields.io/badge/Tauri-2-18181b?style=flat-square" alt="tauri" />
   <img src="https://img.shields.io/badge/React-19-18181b?style=flat-square" alt="react" />
   <img src="https://img.shields.io/badge/Rust-1.77+-18181b?style=flat-square" alt="rust" />
@@ -43,13 +43,13 @@
 
 | Category | Capabilities |
 |----------|--------------|
-| **Passive** | Security headers, cookies, CORS, CSP, CSRF, clickjacking, JWT, rate limits, deserialization indicators |
-| **Active** | XSS (canary + attribute/event injection), SQLi, SSTI, open redirect, path traversal, CORS reflection, CSRF verification |
+| **Passive** | Security headers, cookies, CORS, CSP, CSRF, clickjacking, JWT, rate limits, deserialization indicators, extended header checks (weak HSTS, `X-XSS-Protection`, `SameSite=None` without `Secure`) |
+| **Active** | XSS (canary + attribute/event injection), SQLi, SSTI, open redirect, path traversal, CORS reflection, CSRF verification, method tampering (TRACE/XST), Host header injection |
 | **CMS** | WordPress, Drupal, Joomla, Shopify, Magento fingerprinting + platform-specific checks |
 | **API** | 57+ sensitive path probes (`/swagger.json`, `/env`, `/graphql`, `/wp-json/wp/v2/users`, …) |
 | **Disclosure** | Stack traces, debug headers, file path leaks (Python, Java, PHP, .NET, Go, Ruby, Node.js) |
 | **Services** | Supabase, Firebase, PocketBase, admin panels (phpMyAdmin, Adminer, wp-login, debug consoles) |
-| **Recon** | IP, DNS, TLS, server fingerprinting, tech detection (frameworks, CDNs, WAFs, hosting), `robots.txt` / `sitemap.xml` / `security.txt` |
+| **Recon** | IP, DNS (A/AAAA/MX/NS/SOA/TXT), TLS (protocol, issuer, SAN, expiry), server fingerprinting, tech detection (frameworks, CDNs, WAFs, hosting), `robots.txt` / `sitemap.xml` / `security.txt` |
 | **Knowledge** | 50+ vulnerability definitions with CWE, CVSS severity, remediation, references |
 | **Quality** | Confidence scoring (Confirmed/Firm/Tentative), deduplication, category-capped security score (0–100) |
 
@@ -64,7 +64,7 @@
 - Pro scan helpers: quick headers, login-first setup, branded PDF exports
 - Persistent scan history across app restarts
 - Scan presets (Quick passive, API audit, Full scan) + custom presets
-- Local folder scanning: secrets, config exposure, endpoint inventory (local-only)
+- Local folder scanning: secrets, config exposure, endpoint inventory, code-smell detection (local-only)
 - Settings page (network, crawling, passive, active, data detection, export, presets) with persistent storage
 
 ---
@@ -112,7 +112,7 @@ Pre-built binaries for **Windows (x64)** and **Linux (x64 AppImage)** are publis
 
 1. Bump version in `package.json` and `src-tauri/tauri.conf.json`
 2. Commit and push
-3. Create and push a version tag: `git tag v0.6.0 && git push origin v0.6.0`
+3. Create and push a version tag: `git tag v0.7.0 && git push origin v0.7.0`
 4. GitHub Actions builds all platforms and creates a draft release
 5. Edit the draft release, add release notes, and publish
 
@@ -121,9 +121,9 @@ Pre-built binaries for **Windows (x64)** and **Linux (x64 AppImage)** are publis
 | Platform | Artifact | Notes |
 |----------|----------|-------|
 | macOS (Apple Silicon) | Build locally | For now, macOS developers should compile Chaca themselves with `npm run tauri build` |
-| Windows (x64) | `Chaca_0.6.0_x64-portable.exe` | Run directly; requires [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) on Windows 10 |
-| Windows (x64) | `Chaca_0.6.0_x64-setup.nsis.exe` | Installer (includes WebView2) |
-| Linux (x64) | `Chaca_0.6.0_amd64.AppImage` | Run directly |
+| Windows (x64) | `Chaca_0.7.0_x64-portable.exe` | Run directly; requires [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) on Windows 10 |
+| Windows (x64) | `Chaca_0.7.0_x64-setup.nsis.exe` | Installer (includes WebView2) |
+| Linux (x64) | `Chaca_0.7.0_amd64.AppImage` | Run directly |
 
 **Note:** Current releases are unsigned. Windows may show security warnings, and macOS public distribution is temporarily blocked until Chaca is signed/notarized. Ensure **Settings → Actions → General → Workflow permissions** is set to "Read and write permissions" so the release workflow can create releases.
 

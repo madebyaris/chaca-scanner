@@ -348,6 +348,110 @@ pub fn analyze_response(
                 }
             }
         }
+
+        // ── Extended header checks (weak HSTS, X-XSS-Protection, SameSite=None w/o Secure) ──
+        if config.passive_extended_headers {
+            if url.starts_with("https://") {
+                if let Some(hsts) = headers.get("strict-transport-security") {
+                    if let Ok(v) = hsts.to_str() {
+                        let v_lower = v.to_lowercase();
+                        let max_age = v_lower
+                            .split("max-age=")
+                            .nth(1)
+                            .and_then(|rest| rest.split(';').next())
+                            .and_then(|n| n.trim().parse::<u64>().ok());
+                        let weak = matches!(max_age, Some(m) if m < 31536000) || max_age.is_none();
+                        let no_subdomains = !v_lower.contains("includesubdomains");
+                        if weak || no_subdomains {
+                            let mut issues = Vec::new();
+                            if weak {
+                                issues.push(match max_age {
+                                    Some(m) => format!("max-age {m}s < 1 year"),
+                                    None => "no max-age set".to_string(),
+                                });
+                            }
+                            if no_subdomains {
+                                issues.push("missing includeSubDomains".to_string());
+                            }
+                            vulnerabilities.push(Vulnerability {
+                                id: "passive-hsts-weak".to_string(),
+                                title: "Weak HSTS Policy".to_string(),
+                                description: format!("HSTS is set but {}", issues.join(", ")),
+                                severity: Severity::Medium,
+                                confidence: Confidence::Confirmed,
+                                category: "API8:2023 - Security Misconfiguration".to_string(),
+                                location: url.to_string(),
+                                evidence: format!("Strict-Transport-Security: {v}"),
+                                impact: "Short-lived or narrow HSTS leaves a window for SSL-stripping and first-visit downgrade"
+                                    .to_string(),
+                                remediation: "Set Strict-Transport-Security: max-age=31536000; includeSubDomains (and preload)"
+                                    .to_string(),
+                                affected_endpoints: vec![url.to_string()],
+                                ..Default::default()
+                            });
+                        }
+                    }
+                }
+            }
+
+            if let Some(xxp) = headers.get("x-xss-protection") {
+                if let Ok(v) = xxp.to_str() {
+                    if v.trim() == "1" {
+                        vulnerabilities.push(Vulnerability {
+                            id: "passive-xss-protection".to_string(),
+                            title: "Deprecated X-XSS-Protection Header".to_string(),
+                            description:
+                                "X-XSS-Protection: 1 enables the browser XSS auditor, which is deprecated and can introduce cross-site information leaks"
+                                    .to_string(),
+                            severity: Severity::Low,
+                            confidence: Confidence::Confirmed,
+                            category: "API8:2023 - Security Misconfiguration".to_string(),
+                            location: url.to_string(),
+                            evidence: format!("X-XSS-Protection: {v}"),
+                            impact: "The legacy XSS filter may leak reflected content into error pages".to_string(),
+                            remediation: "Set X-XSS-Protection: 0 (CSP is the modern defense)".to_string(),
+                            affected_endpoints: vec![url.to_string()],
+                            ..Default::default()
+                        });
+                    }
+                }
+            }
+
+            let mut samesite_offenders: Vec<String> = Vec::new();
+            for cookie_header in headers.get_all("set-cookie").iter() {
+                if let Ok(cookie_str) = cookie_header.to_str() {
+                    let lower = cookie_str.to_lowercase();
+                    let name = cookie_str.splitn(2, '=').next().unwrap_or("").trim();
+                    if lower.contains("samesite=none") && !lower.contains("secure") && !name.is_empty()
+                    {
+                        samesite_offenders.push(name.to_string());
+                    }
+                }
+            }
+            if !samesite_offenders.is_empty() {
+                vulnerabilities.push(Vulnerability {
+                    id: "passive-cookie-samesite-none".to_string(),
+                    title: "Cookie SameSite=None without Secure".to_string(),
+                    description: format!(
+                        "Cookie(s) {} declare SameSite=None but are not marked Secure",
+                        samesite_offenders.join(", ")
+                    ),
+                    severity: Severity::High,
+                    confidence: Confidence::Confirmed,
+                    category: "API8:2023 - Security Misconfiguration".to_string(),
+                    location: url.to_string(),
+                    evidence: format!(
+                        "Set-Cookie with SameSite=None and no Secure flag ({} cookie(s))",
+                        samesite_offenders.len()
+                    ),
+                    impact: "Browsers reject SameSite=None cookies without Secure; the cookie can also attach to cross-site requests"
+                        .to_string(),
+                    remediation: "Add the Secure attribute to cookies that use SameSite=None".to_string(),
+                    affected_endpoints: vec![url.to_string()],
+                    ..Default::default()
+                });
+            }
+        }
     }
 
     // ── CSRF Detection ──
