@@ -7,6 +7,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-0.7.0-18181b?style=flat-square" alt="version" />
+  <img src="https://img.shields.io/badge/license-MIT-18181b?style=flat-square" alt="license" />
   <img src="https://img.shields.io/badge/Tauri-2-18181b?style=flat-square" alt="tauri" />
   <img src="https://img.shields.io/badge/React-19-18181b?style=flat-square" alt="react" />
   <img src="https://img.shields.io/badge/Rust-1.77+-18181b?style=flat-square" alt="rust" />
@@ -17,7 +18,7 @@
 </p>
 
 <p align="center">
-  Support Chaca directly: <a href="https://madebyaris.gumroad.com/l/chacha-security">buy Chaca Pro</a>, support via <a href="https://github.com/madebyaris">GitHub</a>, or send $100 founder support via PayPal to <code>arissetia.m@gmail.com</code> and get your company logo listed here forever.
+  Chaca is <strong>free and open source</strong> (MIT). <a href="https://github.com/madebyaris/chaca-scanner">Star it on GitHub</a>, open an issue, or send a PR — every feature is available to everyone.
 </p>
 
 ---
@@ -61,7 +62,7 @@
 - Report viewer with CWE links and external references
 - Filter by severity and confidence
 - Export to JSON, CSV, SARIF, and PDF
-- Pro scan helpers: quick headers, login-first setup, branded PDF exports
+- Scan helpers: quick headers, login-first setup, branded PDF exports
 - Persistent scan history across app restarts
 - Scan presets (Quick passive, API audit, Full scan) + custom presets
 - Local folder scanning: secrets, config exposure, endpoint inventory, code-smell detection (local-only)
@@ -205,16 +206,12 @@ src-tauri/              # Rust backend
 
 ## Support
 
-**Chaca Pro** unlocks branded PDF export, unlimited history, scan profiles, quick auth headers, and login-first scanning. [Get a license](https://madebyaris.gumroad.com/l/chacha-security) to support indie development.
+Chaca is **100% free and open source** under the [MIT license](LICENSE). Every feature — PDF export, login-first scanning, quick headers, scan profiles, unlimited history — is available to everyone. No license keys, no subscriptions, no feature gates.
 
-If you want to directly support the work at the founder level, you can also contribute **$100** via:
+You can still support the project if you like:
 
-- [GitHub Sponsors / GitHub profile](https://github.com/madebyaris)
+- Star or sponsor the repo: [github.com/madebyaris](https://github.com/madebyaris)
 - PayPal: `arissetia.m@gmail.com`
-
-Founder-level supporters can have their company logo listed here as a permanent founding supporter of the repo.
-
-If your subscription expires, you have 7 days to resubscribe before Pro features are disabled — no sudden interruptions.
 
 ---
 

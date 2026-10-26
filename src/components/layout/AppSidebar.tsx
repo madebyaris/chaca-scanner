@@ -1,8 +1,7 @@
 import { cn } from "@/lib/utils"
 import { useScanStore, type View } from "@/store/scanStore"
 import { useSettingsStore, type SettingsTab } from "@/store/settingsStore"
-import { useLicenseStore } from "@/store/licenseStore"
-import { PanelLeft, MoreHorizontal, Crown } from "lucide-react"
+import { PanelLeft, MoreHorizontal } from "lucide-react"
 
 interface NavItem {
   label: string
@@ -38,7 +37,6 @@ const navSections: NavSection[] = [
       { label: "SCAN SETTINGS", view: "settings", settingsTab: "network" },
       { label: "OWASP RULES", view: "settings", settingsTab: "owasp" },
       { label: "EXPORT SETTINGS", view: "settings", settingsTab: "export" },
-      { label: "LICENSE", view: "settings", settingsTab: "license" },
     ],
   },
   {
@@ -100,7 +98,6 @@ function LogoIcon() {
 export function AppSidebar() {
   const { view, setView, sidebarCollapsed, toggleSidebar } = useScanStore()
   const { activeTab: currentSettingsTab, setActiveTab } = useSettingsStore()
-  const isPro = useLicenseStore((s) => s.isPro)
 
   return (
     <aside
@@ -144,7 +141,6 @@ export function AppSidebar() {
                   const isActive = item.view === view && (
                     !item.settingsTab || currentSettingsTab === item.settingsTab
                   )
-                  const isLicense = item.label === "LICENSE"
                   return (
                     <li key={item.label}>
                       <button
@@ -154,33 +150,15 @@ export function AppSidebar() {
                         }}
                         className={cn(
                           "flex items-center gap-2 pl-8 pr-4 py-1.5 text-[11px] tracking-widest font-mono transition-colors w-full text-left relative whitespace-nowrap",
-                          isLicense && "font-bold",
-                          isActive
-                            ? isLicense
-                              ? "text-[#a08530] bg-[#fdfbf8]"
-                              : "text-[#191919] font-bold"
-                            : isLicense
-                              ? "text-[#a08530] hover:text-[#8b6914] hover:bg-[#faf7f4]"
-                              : "text-[#707070] hover:text-[#191919]"
+                          isActive ? "text-[#191919] font-bold" : "text-[#707070] hover:text-[#191919]"
                         )}
                       >
                         {isActive && (
-                          <span
-                            className={cn(
-                              "absolute left-4 top-1/2 -translate-y-1/2 w-1 h-4",
-                              isLicense ? "bg-[#c4a44a]" : "bg-[#191919]"
-                            )}
-                          />
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 w-1 h-4 bg-[#191919]" />
                         )}
-                        {isLicense && <Crown size={10} className="shrink-0 text-[#c4a44a]" />}
                         {item.label}
                         {isActive && (
-                          <span
-                            className={cn(
-                              "ml-1 inline-block w-2 h-2",
-                              isLicense ? "bg-[#c4a44a]" : "bg-[#191919]"
-                            )}
-                          />
+                          <span className="ml-1 inline-block w-2 h-2 bg-[#191919]" />
                         )}
                       </button>
                     </li>
@@ -197,12 +175,6 @@ export function AppSidebar() {
           <>
             <div className="flex items-center gap-2">
               <span className="text-[12px] text-[#191919] font-mono">Chaca v0.5</span>
-              {isPro() && (
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[8px] font-mono tracking-widest font-bold bg-gradient-to-r from-[#c4a44a] to-[#a08530] text-white">
-                  <Crown size={7} />
-                  PRO
-                </span>
-              )}
             </div>
             <button className="text-[#8f8f8f] hover:text-[#191919] transition-colors" aria-label="More options">
               <MoreHorizontal size={16} />
@@ -210,9 +182,6 @@ export function AppSidebar() {
           </>
         ) : (
           <div className="flex flex-col items-center gap-1">
-            {isPro() && (
-              <Crown size={10} className="text-[#c4a44a]" />
-            )}
             <button className="text-[#8f8f8f] hover:text-[#191919] transition-colors" aria-label="More options">
               <MoreHorizontal size={16} />
             </button>

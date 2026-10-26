@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { useSettingsStore, DEFAULT_SETTINGS, type SettingsTab } from "@/store/settingsStore"
-import { useLicenseStore, PRO_FEATURES, type ProFeature } from "@/store/licenseStore"
-import { ProUpsell } from "@/components/ProGate"
 import {
   ToggleRow,
   InputRow,
@@ -14,9 +12,9 @@ import {
   SettingsSection,
 } from "./SettingsControls"
 import { usePresetStore } from "@/store/presetStore"
-import { RotateCcw, Crown, Check, Loader2, AlertCircle, ExternalLink, Sparkles, Play, Trash2, Plus, Upload } from "lucide-react"
+import { RotateCcw, Play, Trash2, Plus, Upload } from "lucide-react"
 
-const TABS: { id: SettingsTab; label: string; pro?: boolean }[] = [
+const TABS: { id: SettingsTab; label: string }[] = [
   { id: "network", label: "NETWORK" },
   { id: "crawling", label: "CRAWLING" },
   { id: "passive", label: "PASSIVE SCAN" },
@@ -24,7 +22,6 @@ const TABS: { id: SettingsTab; label: string; pro?: boolean }[] = [
   { id: "owasp", label: "OWASP / DATA" },
   { id: "export", label: "EXPORT" },
   { id: "presets", label: "PRESETS" },
-  { id: "license", label: "LICENSE", pro: true },
 ]
 
 const LOGO_MAX_WIDTH = 1200
@@ -128,16 +125,11 @@ export function SettingsPage() {
             className={cn(
               "flex-1 py-2.5 text-[10px] font-mono tracking-widest text-center transition-colors border-r border-[#e5e5e5] last:border-r-0",
               activeTab === tab.id
-                ? tab.pro
-                  ? "bg-gradient-to-r from-[#c4a44a] to-[#a08530] text-white font-bold"
-                  : "bg-[#191919] text-white font-bold"
-                : tab.pro
-                  ? "text-[#a08530] hover:text-[#8b6914] hover:bg-[#faf7f4]"
-                  : "text-[#707070] hover:text-[#191919] hover:bg-[#fafafa]"
+                ? "bg-[#191919] text-white font-bold"
+                : "text-[#707070] hover:text-[#191919] hover:bg-[#fafafa]"
             )}
           >
             <span className="flex items-center justify-center gap-1">
-              {tab.pro && <Crown size={9} />}
               {tab.label}
             </span>
           </button>
@@ -153,7 +145,6 @@ export function SettingsPage() {
         {activeTab === "owasp" && <OwaspDataTab />}
         {activeTab === "export" && <ExportTab />}
         {activeTab === "presets" && <PresetsTab />}
-        {activeTab === "license" && <LicenseTab />}
       </div>
 
       {/* Reset button */}
@@ -587,7 +578,6 @@ function OwaspDataTab() {
 
 function ExportTab() {
   const { settings, updateSettings } = useSettingsStore()
-  const hasPdfExport = useLicenseStore((s) => s.hasFeature("pdf-export"))
   const [isUploadingLogo, setIsUploadingLogo] = useState(false)
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -642,8 +632,7 @@ function ExportTab() {
       </SettingsSection>
 
       <SettingsSection title="REPORT BRANDING">
-        {hasPdfExport ? (
-          <>
+        <>
             <TextRow
               label="COMPANY NAME"
               description="Appears in the PDF header and cover summary."
@@ -829,11 +818,6 @@ function ExportTab() {
               </div>
             </div>
           </>
-        ) : (
-          <div className="py-4">
-            <ProUpsell feature="pdf-export" />
-          </div>
-        )}
       </SettingsSection>
 
       <SettingsSection title="SCORING WEIGHTS (ADVANCED)">
@@ -1041,320 +1025,3 @@ function PresetsTab() {
   )
 }
 
-function LicenseTab() {
-  const { license, isActivating, activationError, activate, deactivate, isPro, loadLicense, loaded } =
-    useLicenseStore()
-  const [keyInput, setKeyInput] = useState("")
-
-  useEffect(() => {
-    if (!loaded) loadLicense()
-  }, [loaded, loadLicense])
-
-  const handleActivate = async () => {
-    const trimmed = keyInput.trim()
-    if (!trimmed) return
-    await activate(trimmed)
-    if (useLicenseStore.getState().isPro()) {
-      setKeyInput("")
-    }
-  }
-
-  const proFeatureList = Object.entries(PRO_FEATURES) as [ProFeature, { label: string; description: string }][]
-
-  return (
-    <>
-      {/* Current status */}
-      <div className={cn(
-        "border",
-        isPro()
-          ? "border-[#e0d5c8] bg-gradient-to-br from-[#fdfbf8] to-[#f8f4ee]"
-          : "border-[#e5e5e5] bg-[#ffffff]"
-      )}>
-        <div className={cn(
-          "px-5 py-3 border-b",
-          isPro() ? "border-[#e0d5c8]" : "border-[#e5e5e5]"
-        )}>
-          <span className="text-[11px] font-mono tracking-widest text-[#191919] font-bold flex items-center gap-2">
-            {isPro() && <Crown size={12} className="text-[#c4a44a]" />}
-            LICENSE STATUS
-          </span>
-        </div>
-        <div className="px-5 py-4">
-          {isPro() && license ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-[#c4a44a] to-[#8b6914] flex items-center justify-center">
-                  <Check size={14} className="text-white" />
-                </div>
-                <div>
-                  <span className="text-[12px] font-mono font-bold text-[#191919] block">
-                    {license.status === "grace"
-                      ? "CHACA PRO (RENEWAL GRACE)"
-                      : "CHACA PRO ACTIVE"}
-                  </span>
-                  <span className="text-[10px] font-mono text-[#8f8f8f]">
-                    {license.status === "grace"
-                      ? license.grace_expires_at
-                        ? `Your subscription expired, but you still have access until ${new Date(license.grace_expires_at * 1000).toLocaleDateString()}. Resubscribe to keep Pro features.`
-                        : "Your subscription expired. Resubscribe to keep Pro features."
-                      : `Licensed to ${license.email}`}
-                  </span>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5 pl-11">
-                <div className="flex gap-2">
-                  <span className="text-[10px] font-mono text-[#8f8f8f] w-[80px]">KEY</span>
-                  <span className="text-[10px] font-mono text-[#525252]">
-                    {license.license_key.slice(0, 8)}...{license.license_key.slice(-4)}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-[10px] font-mono text-[#8f8f8f] w-[80px]">SINCE</span>
-                  <span className="text-[10px] font-mono text-[#525252]">
-                    {license.created_at ? new Date(license.created_at).toLocaleDateString() : "—"}
-                  </span>
-                </div>
-              </div>
-              {license.status === "grace" && (
-                <div className="pt-2 pl-11">
-                  <a
-                    href="https://madebyaris.gumroad.com/l/chacha-security"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-[10px] font-mono tracking-wider text-[#c4a44a] font-bold hover:underline"
-                  >
-                    RESUBSCRIBE TO KEEP PRO
-                    <ExternalLink size={9} />
-                  </a>
-                </div>
-              )}
-              <div className="pt-2 pl-11">
-                <button
-                  onClick={() => {
-                    if (window.confirm("Deactivate your Pro license on this device?")) {
-                      deactivate()
-                    }
-                  }}
-                  className="text-[10px] font-mono tracking-wider text-[#DC2626] hover:text-[#b91c1c] transition-colors"
-                >
-                  DEACTIVATE LICENSE
-                </button>
-              </div>
-            </div>
-          ) : license?.status === "expired" ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-[#fef2f2] flex items-center justify-center">
-                  <AlertCircle size={14} className="text-[#DC2626]" />
-                </div>
-                <div>
-                  <span className="text-[12px] font-mono font-bold text-[#191919] block">
-                    GRACE PERIOD ENDED
-                  </span>
-                  <span className="text-[10px] font-mono text-[#8f8f8f]">
-                    Your renewal grace period has ended. Resubscribe to restore Pro features.
-                  </span>
-                </div>
-              </div>
-              <div className="pl-11">
-                <a
-                  href="https://madebyaris.gumroad.com/l/chacha-security"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 text-[10px] font-mono tracking-widest font-bold bg-gradient-to-r from-[#c4a44a] to-[#a08530] text-white hover:from-[#b8993e] hover:to-[#947a2a] transition-all w-fit"
-                >
-                  <Crown size={10} />
-                  RESUBSCRIBE
-                  <ExternalLink size={9} />
-                </a>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-[#f5f5f5] flex items-center justify-center">
-                  <Crown size={14} className="text-[#8f8f8f]" />
-                </div>
-                <div>
-                  <span className="text-[12px] font-mono font-bold text-[#191919] block">
-                    FREE EDITION
-                  </span>
-                  <span className="text-[10px] font-mono text-[#8f8f8f]">
-                    Upgrade to unlock Pro features
-                  </span>
-                </div>
-              </div>
-
-              {/* Activation form */}
-              <div className="pl-11 space-y-3">
-                <div>
-                  <label className="text-[10px] font-mono tracking-wider text-[#525252] font-bold block mb-1.5">
-                    LICENSE KEY
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={keyInput}
-                      onChange={(e) => setKeyInput(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleActivate()}
-                      placeholder="XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX"
-                      className="flex-1 h-8 px-3 text-[11px] font-mono text-[#191919] bg-[#fafafa] border border-[#e5e5e5] focus:border-[#191919] focus:outline-none transition-colors placeholder:text-[#c4c4c4]"
-                      disabled={isActivating}
-                    />
-                    <button
-                      onClick={handleActivate}
-                      disabled={isActivating || !keyInput.trim()}
-                      className={cn(
-                        "px-4 h-8 text-[10px] font-mono tracking-widest font-bold transition-colors flex items-center gap-2",
-                        isActivating || !keyInput.trim()
-                          ? "bg-[#e5e5e5] text-[#8f8f8f] cursor-not-allowed"
-                          : "bg-[#191919] text-white hover:bg-[#333]"
-                      )}
-                    >
-                      {isActivating ? (
-                        <>
-                          <Loader2 size={10} className="animate-spin" />
-                          VERIFYING
-                        </>
-                      ) : (
-                        "ACTIVATE"
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {activationError && (
-                  <div className="flex items-center gap-2 px-3 py-2 bg-[#FEF2F2] border border-[#FECACA]">
-                    <AlertCircle size={12} className="text-[#DC2626] shrink-0" />
-                    <span className="text-[10px] font-mono text-[#DC2626]">{activationError}</span>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-4 pt-1">
-                  <a
-                    href="https://madebyaris.gumroad.com/l/chacha-security"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-[10px] font-mono tracking-wider text-[#191919] font-bold hover:underline"
-                  >
-                    GET A LICENSE
-                    <ExternalLink size={9} />
-                  </a>
-                  <span className="text-[10px] font-mono text-[#8f8f8f]">
-                    $5/month or $50/year
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Pro features list */}
-      <SettingsSection title="PRO FEATURES">
-        <div className="divide-y divide-[#f0f0f0]">
-          {proFeatureList.map(([key, info]) => (
-            <div key={key} className="flex items-center justify-between py-3">
-              <div className="flex-1 min-w-0">
-                <span className="text-[11px] font-mono tracking-wider text-[#191919] font-bold block">
-                  {info.label.toUpperCase()}
-                </span>
-                <span className="text-[10px] font-mono text-[#8f8f8f] mt-0.5 block leading-relaxed">
-                  {info.description}
-                </span>
-              </div>
-              <div className="shrink-0 ml-4">
-                {isPro() ? (
-                  <span className="flex items-center gap-1 text-[10px] font-mono tracking-wider text-[#16a34a] font-bold">
-                    <Check size={10} />
-                    ACTIVE
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 text-[10px] font-mono tracking-wider text-[#8f8f8f]">
-                    <Crown size={9} className="text-[#c4a44a]" />
-                    PRO
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </SettingsSection>
-
-      {/* Comparison */}
-      {!isPro() && (
-        <div className="border border-[#e0d5c8] bg-gradient-to-br from-[#fdfbf8] to-[#f8f4ee]">
-          <div className="px-5 py-3 border-b border-[#e0d5c8]">
-            <span className="text-[11px] font-mono tracking-widest text-[#191919] font-bold flex items-center gap-2">
-              <Sparkles size={12} className="text-[#c4a44a]" />
-              WHY UPGRADE?
-            </span>
-          </div>
-          <div className="px-5 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-[10px] font-mono tracking-wider text-[#8f8f8f] font-bold block mb-2">
-                  FREE
-                </span>
-                <ul className="space-y-1.5">
-                  {[
-                    "Full passive + active scanning",
-                    "JSON, CSV, SARIF export",
-                    "50-scan history",
-                    "CWE remediation guidance",
-                    "Community support",
-                  ].map((item) => (
-                    <li key={item} className="flex items-start gap-2">
-                      <Check size={9} className="text-[#16a34a] mt-0.5 shrink-0" />
-                      <span className="text-[10px] font-mono text-[#525252]">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <span className="text-[10px] font-mono tracking-wider text-[#c4a44a] font-bold mb-2 flex items-center gap-1">
-                  <Crown size={9} />
-                  PRO
-                </span>
-                <ul className="space-y-1.5">
-                  {[
-                    "Everything in Free",
-                    "Branded PDF reports",
-                    "Scheduled scans + drift detection",
-                    "Unlimited scan history",
-                    "Compliance mapping (PCI, SOC2)",
-                    "Attack surface visualization",
-                    "AI-powered remediation",
-                    "Scan profiles & templates",
-                    "Trending analytics",
-                    "Priority support",
-                  ].map((item) => (
-                    <li key={item} className="flex items-start gap-2">
-                      <Check size={9} className="text-[#c4a44a] mt-0.5 shrink-0" />
-                      <span className="text-[10px] font-mono text-[#525252]">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-[#e0d5c8] flex items-center justify-between">
-              <span className="text-[10px] font-mono text-[#8f8f8f]">
-                Support indie development. Ship secure code.
-              </span>
-              <a
-                href="https://madebyaris.gumroad.com/l/chacha-security"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 text-[10px] font-mono tracking-widest font-bold bg-gradient-to-r from-[#c4a44a] to-[#a08530] text-white hover:from-[#b8993e] hover:to-[#947a2a] transition-all"
-              >
-                <Crown size={10} />
-                GET CHACA PRO
-                <ExternalLink size={9} />
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  )
-}

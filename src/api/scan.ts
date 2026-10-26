@@ -33,14 +33,3 @@ export async function cancelScan() {
   return await invoke<void>('cancel_scan');
 }
 
-export async function activateLicense(productId: string, licenseKey: string) {
-  return await invoke<unknown>('activate_license', { productId, licenseKey });
-}
-
-export async function deactivateLicense() {
-  return await invoke<void>('deactivate_license');
-}
-
-export async function getLicenseStatus() {
-  return await invoke<{ is_pro: boolean; license: unknown }>('get_license_status');
-}

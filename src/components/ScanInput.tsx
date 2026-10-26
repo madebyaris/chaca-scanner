@@ -8,7 +8,6 @@ import { open } from "@tauri-apps/plugin-dialog"
 import { Search, ArrowUpRight, AlertTriangle, FileText, FolderOpen, SlidersHorizontal, LogIn, Crown, Save, Trash2, Plus } from "lucide-react"
 import { DotProgressBar } from "./dashboard/DotProgressBar"
 import { exportByFormat } from "@/utils/export"
-import { useLicenseStore } from "@/store/licenseStore"
 import {
   Sheet,
   SheetContent,
@@ -35,12 +34,9 @@ export function ScanInput() {
     setResult,
     setError,
     history,
-    setView,
   } = useScanStore()
-  const { loaded, loadSettings, settings, updateSettings, setActiveTab } = useSettingsStore()
+  const { loaded, loadSettings, settings, updateSettings } = useSettingsStore()
   const { presets, applyPreset } = usePresetStore()
-  const hasFeature = useLicenseStore((s) => s.hasFeature)
-
   const [urlError, setUrlError] = useState("")
   const [headersOpen, setHeadersOpen] = useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
@@ -61,28 +57,12 @@ export function ScanInput() {
   const quickPassive = presets.find((p) => p.id === 'quick-passive')
   const fullScan = presets.find((p) => p.id === 'full-scan')
   const lastResult = history.length > 0 ? history[history.length - 1] : null
-  const authFeatureEnabled = hasFeature("authenticated-scanning")
-  const pdfExportEnabled = hasFeature("pdf-export")
-
-  const openLicenseUpsell = () => {
-    setActiveTab("license")
-    setView("settings")
-  }
-
   const openHeadersDrawer = () => {
-    if (!authFeatureEnabled) {
-      openLicenseUpsell()
-      return
-    }
     setHeaderDraft(settings.customHeaders)
     setHeadersOpen(true)
   }
 
   const openLoginDrawer = () => {
-    if (!authFeatureEnabled) {
-      openLicenseUpsell()
-      return
-    }
     setLoginDraft({
       enabled: settings.authLoginEnabled,
       loginUrl: settings.authLoginUrl,
@@ -125,7 +105,7 @@ export function ScanInput() {
       const settings = useSettingsStore.getState().settings
       const result = await startFolderScan(path)
       setResult(result, settings.historyLimit)
-      if (settings.autoExportOnComplete && (settings.defaultExportFormat !== "pdf" || pdfExportEnabled)) {
+      if (settings.autoExportOnComplete) {
         exportByFormat(result, settings.defaultExportFormat)
       }
     } catch (err) {
@@ -177,7 +157,7 @@ export function ScanInput() {
       const config = toScanConfig(settings)
       const result = await startScan(normalizedUrl, scanType, config as Record<string, unknown>)
       setResult(result, settings.historyLimit)
-      if (settings.autoExportOnComplete && (settings.defaultExportFormat !== "pdf" || pdfExportEnabled)) {
+      if (settings.autoExportOnComplete) {
         exportByFormat(result, settings.defaultExportFormat)
       }
     } catch (err) {
@@ -271,14 +251,12 @@ export function ScanInput() {
                   description="Set tokens, cookies, or auth headers"
                   icon={SlidersHorizontal}
                   onClick={openHeadersDrawer}
-                  enabled={authFeatureEnabled}
                 />
                 <ProActionButton
                   label="LOGIN FIRST"
                   description="Authenticate with email + password first"
                   icon={LogIn}
                   onClick={openLoginDrawer}
-                  enabled={authFeatureEnabled}
                 />
               </div>
               <label htmlFor="url" className="block text-[10px] font-mono tracking-widest text-[#525252] font-bold mb-2">
@@ -580,35 +558,24 @@ function ProActionButton({
   description,
   icon: Icon,
   onClick,
-  enabled,
 }: {
   label: string
   description: string
   icon: React.ComponentType<{ size?: number; className?: string }>
   onClick: () => void
-  enabled: boolean
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={cn(
-        "flex items-center gap-3 border px-3 py-2 text-left transition-colors",
-        enabled
-          ? "border-[#e0d5c8] bg-gradient-to-r from-[#fdfbf8] to-[#f8f4ee] hover:border-[#c4a44a]"
-          : "border-[#e5e5e5] bg-[#fafafa] hover:border-[#191919]"
-      )}
+      className="flex items-center gap-3 border border-[#e5e5e5] bg-[#fafafa] px-3 py-2 text-left transition-colors hover:border-[#191919]" 
     >
       <div className="flex h-8 w-8 items-center justify-center border border-[#e5e5e5] bg-white">
-        <Icon size={14} className={enabled ? "text-[#a08530]" : "text-[#525252]"} />
+        <Icon size={14} className="text-[#525252]" />
       </div>
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono tracking-widest text-[#191919] font-bold">{label}</span>
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[8px] font-mono tracking-widest font-bold bg-gradient-to-r from-[#c4a44a] to-[#a08530] text-white">
-            <Crown size={7} />
-            PRO
-          </span>
         </div>
         <p className="text-[10px] font-mono text-[#8f8f8f] mt-0.5">{description}</p>
       </div>

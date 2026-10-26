@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tracing::info;
 
-pub mod license;
 pub mod scanner;
 
 static SCAN_CANCELLED: AtomicBool = AtomicBool::new(false);
@@ -468,41 +467,6 @@ fn get_app_info() -> serde_json::Value {
 }
 
 #[tauri::command]
-async fn activate_license(
-    product_id: String,
-    license_key: String,
-) -> Result<license::LicenseInfo, String> {
-    license::verify_license(&product_id, &license_key).await
-}
-
-#[tauri::command]
-fn deactivate_license() -> Result<(), String> {
-    license::deactivate_license();
-    Ok(())
-}
-
-#[tauri::command]
-fn get_license_status() -> serde_json::Value {
-    let is_pro = license::is_pro();
-    let info = license::get_license_info();
-    serde_json::json!({
-        "is_pro": is_pro,
-        "license": info,
-    })
-}
-
-#[tauri::command]
-fn restore_cached_license(info: license::LicenseInfo) -> Result<(), String> {
-    license::restore_cached_license(info);
-    Ok(())
-}
-
-#[tauri::command]
-fn check_pro_feature(_feature: String) -> Result<bool, String> {
-    Ok(license::is_pro())
-}
-
-#[tauri::command]
 async fn scan_folder(path: String) -> Result<ScanResult, String> {
     info!("Starting folder scan: {}", path);
     scanner::folder_scanner::scan_folder(&path)
@@ -526,11 +490,6 @@ pub fn run() {
             cancel_scan,
             scan_folder,
             get_app_info,
-            activate_license,
-            deactivate_license,
-            get_license_status,
-            restore_cached_license,
-            check_pro_feature,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

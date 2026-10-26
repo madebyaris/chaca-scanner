@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { LazyStore } from '@tauri-apps/plugin-store';
 import type { DiscoveryMode, Severity } from './scanStore';
 
-export type SettingsTab = 'network' | 'crawling' | 'passive' | 'active' | 'owasp' | 'export' | 'presets' | 'license';
+export type SettingsTab = 'network' | 'crawling' | 'passive' | 'active' | 'owasp' | 'export' | 'presets';
 
 export interface HeaderPair {
   key: string;

@@ -1,14 +1,11 @@
-import { cn } from "@/lib/utils"
 import { useScanStore } from "@/store/scanStore"
-import { useSettingsStore } from "@/store/settingsStore"
-import { useLicenseStore } from "@/store/licenseStore"
 import { exportPDF } from "@/utils/export"
 import { ReportCard } from "./ReportCard"
 import { ScanChart } from "./ScanChart"
 import { StatsGrid } from "./StatsGrid"
 import { VulnerabilityGrid } from "./VulnerabilityGrid"
 import { TargetIntelligence } from "./TargetIntelligence"
-import { Search, Crown } from "lucide-react"
+import { Search } from "lucide-react"
 import { useMemo } from "react"
 
 function fingerprintFor(value: { fingerprint?: string; id?: string; location?: string }) {
@@ -17,8 +14,6 @@ function fingerprintFor(value: { fingerprint?: string; id?: string; location?: s
 
 export function ScanDashboard() {
   const { result, history, setView } = useScanStore()
-  const setActiveTab = useSettingsStore((s) => s.setActiveTab)
-  const hasPdfExport = useLicenseStore((s) => s.hasFeature("pdf-export"))
 
   if (!result) {
     return (
@@ -55,11 +50,6 @@ export function ScanDashboard() {
   }, [history, result])
 
   const handleExportPdf = () => {
-    if (!hasPdfExport) {
-      setActiveTab("license")
-      setView("settings")
-      return
-    }
     exportPDF(result)
   }
 
@@ -86,14 +76,8 @@ export function ScanDashboard() {
             </span>
             <button
               onClick={handleExportPdf}
-              className={cn(
-                "px-4 py-1.5 text-[10px] font-mono tracking-widest transition-colors border flex items-center gap-2",
-                hasPdfExport
-                  ? "border-[#e0d5c8] bg-[#faf7f4] text-[#8b6914] hover:border-[#c4a44a]"
-                  : "border-[#e5e5e5] bg-[#fafafa] text-[#8f8f8f] hover:text-[#191919]"
-              )}
+              className="px-4 py-1.5 border border-[#e5e5e5] bg-[#fafafa] text-[10px] font-mono tracking-widest text-[#8f8f8f] transition-colors hover:text-[#191919] flex items-center gap-2"
             >
-              {!hasPdfExport && <Crown size={10} className="text-[#c4a44a]" />}
               EXPORT PDF
             </button>
             <button

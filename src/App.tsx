@@ -7,18 +7,12 @@ import { ScanHistory } from "./components/dashboard/ScanHistory"
 import { ReportViewer } from "./components/ReportViewer"
 import { SettingsPage } from "./components/settings/SettingsPage"
 import { useScanStore } from "./store/scanStore"
-import { useLicenseStore } from "./store/licenseStore"
 import { usePresetStore } from "./store/presetStore"
 import "./App.css"
 
 function AppContent() {
   const { view, result, error, isScanning, loadHistory } = useScanStore()
-  const { loadLicense, loaded: licenseLoaded } = useLicenseStore()
   const { loadPresets } = usePresetStore()
-
-  useEffect(() => {
-    if (!licenseLoaded) loadLicense()
-  }, [licenseLoaded, loadLicense])
 
   useEffect(() => {
     loadHistory()
@@ -136,9 +130,12 @@ function AboutPlaceholder() {
             LICENSE
           </span>
         </div>
-        <div className="p-8">
+        <div className="p-8 space-y-3">
           <p className="text-[11px] font-mono text-[#525252]">
-            Chaca is open-source software. Use responsibly and only scan targets you have permission to test.
+            Chaca is free and open source under the MIT License. Every feature is available to everyone — no license keys, no subscriptions, no feature gates.
+          </p>
+          <p className="text-[11px] font-mono text-[#525252]">
+            Use responsibly and only scan targets you have permission to test.
           </p>
         </div>
       </div>
