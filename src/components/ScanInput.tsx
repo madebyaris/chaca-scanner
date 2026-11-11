@@ -8,6 +8,7 @@ import { open } from "@tauri-apps/plugin-dialog"
 import { Search, ArrowUpRight, AlertTriangle, FileText, FolderOpen, SlidersHorizontal, LogIn, Crown, Save, Trash2, Plus } from "lucide-react"
 import { DotProgressBar } from "./dashboard/DotProgressBar"
 import { exportByFormat } from "@/utils/export"
+import { APP_VERSION } from "@/utils/version"
 import {
   Sheet,
   SheetContent,
@@ -181,7 +182,7 @@ export function ScanInput() {
               MACOS
             </span>
             <span className="px-4 py-1.5 bg-[#191919] text-[#ffffff] text-[10px] font-mono tracking-widest">
-              v0.6.0
+              v{APP_VERSION}
             </span>
           </div>
         </div>

@@ -1,0 +1,24 @@
+[package]
+name = "chaca-core"
+version = "0.7.0"
+description = "Framework-agnostic web security scanning engine for Chaca"
+authors = ["Aris Setiawan"]
+edition = "2021"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
+regex = { workspace = true }
+url = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+base64 = "0.22"
+walkdir = "2"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-pki-types = "1"
+webpki-roots = "0.26"
+x509-parser = "0.18"
+trust-dns-resolver = "0.23"
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12", "logging"] }

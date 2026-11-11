@@ -8,6 +8,7 @@ import { ReportViewer } from "./components/ReportViewer"
 import { SettingsPage } from "./components/settings/SettingsPage"
 import { useScanStore } from "./store/scanStore"
 import { usePresetStore } from "./store/presetStore"
+import { APP_VERSION } from "./utils/version"
 import "./App.css"
 
 function AppContent() {
@@ -69,7 +70,7 @@ function AboutPlaceholder() {
         <div className="p-8">
           <div className="flex flex-col gap-3">
             {[
-              { key: "VERSION", value: "0.6.0" },
+              { key: "VERSION", value: APP_VERSION },
               { key: "FRAMEWORK", value: "Tauri 2.x + React 19" },
               { key: "SCANNER", value: "Rust (reqwest + tokio)" },
               { key: "COVERAGE", value: "OWASP API Security Top 10" },

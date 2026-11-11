@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import type { ScanResult, Severity, Confidence } from '@/store/scanStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import { APP_VERSION } from '@/utils/version';
 
 export type ExportFormat = 'json' | 'csv' | 'sarif' | 'pdf';
 
@@ -143,7 +144,7 @@ export function exportSARIF(result: ScanResult): void {
         tool: {
           driver: {
             name: 'Chaca',
-            version: '0.6.0',
+            version: APP_VERSION,
             informationUri: 'https://github.com/madebyaris',
             rules: [
               ...result.vulnerabilities.map((vuln) => ({

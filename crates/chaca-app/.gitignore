@@ -1,0 +1,4 @@
+/verification/*.log
+/verification/*.app/
+/verification/exports/
+/verification/__pycache__/

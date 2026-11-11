@@ -2,13 +2,22 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
+import { createRequire } from "module";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
+// Single source of truth for the app version shown in the UI and written into
+// exported SARIF. package.json is the release version (see the release steps in
+// README.md), so the frontend never carries its own copy that can drift.
+const pkg = createRequire(import.meta.url)("./package.json");
+
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

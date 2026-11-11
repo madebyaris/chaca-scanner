@@ -8,20 +8,24 @@ use crate::{
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering as AtomicOrdering};
 use std::sync::Arc;
-use tauri::Emitter;
 use tracing::info;
 use url::Url;
 
+/// Reports scan progress to whichever front end is driving the engine.
+///
+/// The emitter owns the findings counter so that every progress event can
+/// carry the running total, and forwards events to an optional
+/// [`ProgressSink`](crate::ProgressSink).
 #[derive(Clone)]
 pub struct ProgressEmitter {
-    app_handle: Option<tauri::AppHandle>,
+    sink: Option<Arc<dyn crate::ProgressSink>>,
     findings_count: Arc<AtomicU32>,
 }
 
 impl ProgressEmitter {
-    pub fn new(app_handle: Option<tauri::AppHandle>) -> Self {
+    pub fn new(sink: Option<Arc<dyn crate::ProgressSink>>) -> Self {
         Self {
-            app_handle,
+            sink,
             findings_count: Arc::new(AtomicU32::new(0)),
         }
     }
@@ -31,18 +35,15 @@ impl ProgressEmitter {
     }
 
     pub fn emit_detail(&self, phase: &str, current: u32, total: u32, message: &str, detail: &str) {
-        if let Some(app) = &self.app_handle {
-            let _ = app.emit(
-                "scan-progress",
-                ScanProgress {
-                    phase: phase.to_string(),
-                    current,
-                    total,
-                    message: message.to_string(),
-                    detail: detail.to_string(),
-                    findings_so_far: self.findings_count.load(AtomicOrdering::Relaxed),
-                },
-            );
+        if let Some(sink) = &self.sink {
+            sink.emit(&ScanProgress {
+                phase: phase.to_string(),
+                current,
+                total,
+                message: message.to_string(),
+                detail: detail.to_string(),
+                findings_so_far: self.findings_count.load(AtomicOrdering::Relaxed),
+            });
         }
     }
 
@@ -127,7 +128,7 @@ async fn bootstrap_authenticated_session(
 
 pub async fn run_scan(
     request: ScanRequest,
-    app_handle: Option<tauri::AppHandle>,
+    sink: Option<Arc<dyn crate::ProgressSink>>,
 ) -> Result<ScanResult, Box<dyn std::error::Error + Send + Sync>> {
     fn ensure_not_cancelled() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         if crate::cancel_scan_requested() {
@@ -142,7 +143,7 @@ pub async fn run_scan(
         request.url, request.scan_type
     );
 
-    let emitter = ProgressEmitter::new(app_handle);
+    let emitter = ProgressEmitter::new(sink);
 
     let runtime = ScanRuntime::new(config)?;
     ensure_not_cancelled()?;

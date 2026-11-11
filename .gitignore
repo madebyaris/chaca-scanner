@@ -17,6 +17,10 @@ dist-ssr
 # Tauri build artifacts
 src-tauri/target/
 
+# Rust workspace build artifacts
+/target/
+/target-*/
+
 # Local env / secrets
 *.local
 .env

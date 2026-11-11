@@ -1,0 +1,30 @@
+[workspace]
+resolver = "2"
+members = ["crates/chaca-core", "crates/chaca-app", "src-tauri"]
+
+[workspace.package]
+version = "0.7.0"
+edition = "2021"
+authors = ["Aris Setiawan"]
+license = "MIT"
+
+[workspace.dependencies]
+chaca-core = { path = "crates/chaca-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "cookies"] }
+url = "2"
+regex = "1"
+tracing = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+
+# The desktop app ships as a single self-contained binary, so it is worth
+# spending build time to keep the download small and the resident set lean.
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
