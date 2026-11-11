@@ -371,7 +371,9 @@ mod tests {
         let sarif = export_sarif(&sample_result());
         let parsed: Value = serde_json::from_str(&sarif).expect("valid json");
         assert_eq!(parsed["version"], "2.1.0");
-        let rules = parsed["runs"][0]["tool"]["driver"]["rules"].as_array().unwrap();
+        let rules = parsed["runs"][0]["tool"]["driver"]["rules"]
+            .as_array()
+            .unwrap();
         let results = parsed["runs"][0]["results"].as_array().unwrap();
         assert_eq!(rules.len(), 1);
         assert_eq!(results.len(), 1);

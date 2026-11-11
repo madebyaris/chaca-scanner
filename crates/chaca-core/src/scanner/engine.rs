@@ -8,8 +8,13 @@ use crate::{
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering as AtomicOrdering};
 use std::sync::Arc;
+use tokio::sync::Semaphore;
+use tokio::task::JoinSet;
 use tracing::info;
 use url::Url;
+
+/// Responses larger than this are cut before header and body analysis.
+const MAX_ANALYSIS_BODY: usize = 512 * 1024;
 
 /// Reports scan progress to whichever front end is driving the engine.
 ///
@@ -108,8 +113,8 @@ async fn bootstrap_authenticated_session(
         ),
     ];
 
-    let context = RequestContext::from_scan_config(HttpMethod::Post, &login_url, config)
-        .with_label("login");
+    let context =
+        RequestContext::from_scan_config(HttpMethod::Post, &login_url, config).with_label("login");
     let response = runtime
         .execute_request(context.into_builder(runtime.client()).form(&payload))
         .await?;
@@ -185,6 +190,21 @@ pub async fn run_scan(
         target_info.server
     );
 
+    if config.known_vuln_checks {
+        emitter.emit_detail(
+            "advisories",
+            21,
+            100,
+            "Comparing versions with the advisory list...",
+            &target_info.server,
+        );
+        let known = super::rules::advisories::match_target(&target_info, &request.url);
+        if !known.is_empty() {
+            emitter.add_findings(known.len() as u32);
+        }
+        all_vulnerabilities.extend(known);
+    }
+
     let run_passive = matches!(request.scan_type, ScanType::Passive | ScanType::Full);
     let run_active = matches!(request.scan_type, ScanType::Active | ScanType::Full);
     let mut auth_validated = false;
@@ -224,71 +244,43 @@ pub async fn run_scan(
 
     if run_passive {
         emitter.emit("passive", 22, 100, "Running passive analysis...");
-        for (i, endpoint) in inventory.endpoints.iter_mut().enumerate() {
-            ensure_not_cancelled()?;
-            let pct = 22 + (i as u32 * 28 / endpoint_count);
-            let short_path = shorten_url(&endpoint.url);
-            emitter.emit_detail(
-                "passive",
-                pct,
-                100,
-                &format!("Analyzing endpoint {}/{}", i + 1, endpoint_count),
-                &short_path,
-            );
-
-            let passive_method = match endpoint.method {
-                HttpMethod::Get | HttpMethod::Head | HttpMethod::Options => endpoint.method,
-                _ => HttpMethod::Options,
-            };
-            let context = RequestContext::from_scan_config(passive_method, &endpoint.url, config)
-                .with_label("passive");
-            let request_builder = apply_endpoint_defaults(
-                context.into_builder(runtime.client()),
-                endpoint,
-                "baseline",
-            );
-            if let Ok(response) = runtime.execute_request(request_builder).await {
-                let status = response.status().as_u16();
-                let headers = response.headers().clone();
-                let body = response.text().await.unwrap_or_default();
-                endpoint.last_status = Some(status);
-                endpoint.baseline_length = Some(body.len());
-
-                if !matches!(
-                    base_request.auth_profile,
-                    super::domain::AuthProfile::Anonymous
-                ) {
-                    let auth_candidate = endpoint.tags.contains(&super::domain::EndpointTag::Admin)
-                        || endpoint
-                            .tags
-                            .contains(&super::domain::EndpointTag::AuthRelated)
-                        || endpoint.tags.contains(&super::domain::EndpointTag::Api)
-                        || endpoint.url.to_lowercase().contains("/graphql");
-                    if auth_candidate && (status == 401 || status == 403) {
-                        auth_failed = true;
-                    } else if auth_candidate && !(status == 401 || status == 403) {
-                        auth_validated = true;
-                    }
-                }
-
-                response_cache.insert(
-                    endpoint.url.clone(),
-                    (status, headers.clone(), body.clone()),
-                );
-                let vulns = super::passive::analyze_response(
-                    &endpoint.url,
-                    status,
-                    &headers,
-                    &body,
-                    config,
-                );
-                if !vulns.is_empty() {
-                    emitter.add_findings(vulns.len() as u32);
-                }
-                all_vulnerabilities.extend(vulns);
+        let anonymous = matches!(
+            base_request.auth_profile,
+            super::domain::AuthProfile::Anonymous
+        );
+        let passive_hits = fetch_passive_endpoints(
+            &inventory.endpoints,
+            &runtime,
+            config,
+            &emitter,
+            endpoint_count,
+            anonymous,
+        )
+        .await;
+        ensure_not_cancelled()?;
+        passive_vulnerability_count = passive_hits.iter().map(|hit| hit.vulns.len() as u32).sum();
+        for hit in passive_hits {
+            if let Some(endpoint) = inventory.endpoints.get_mut(hit.index) {
+                endpoint.last_status = Some(hit.status);
+                endpoint.baseline_length = Some(hit.body.len());
             }
+            if hit.auth_failed {
+                auth_failed = true;
+            }
+            if hit.auth_validated {
+                auth_validated = true;
+            }
+            if !hit.vulns.is_empty() {
+                emitter.add_findings(hit.vulns.len() as u32);
+            }
+            let url = inventory
+                .endpoints
+                .get(hit.index)
+                .map(|endpoint| endpoint.url.clone())
+                .unwrap_or_default();
+            response_cache.insert(url, (hit.status, hit.headers, hit.body));
+            all_vulnerabilities.extend(hit.vulns);
         }
-        passive_vulnerability_count = all_vulnerabilities.len() as u32;
 
         emitter.emit("passive", 52, 100, "Checking API exposures...");
         let mut api_checks = super::rules::api_exposure::get_api_exposure_checks();
@@ -298,43 +290,10 @@ pub async fn run_scan(
                 api_checks.push((trimmed, Severity::Medium));
             }
         }
-        let base_url = request.url.trim_end_matches('/');
-        let total_api_checks = api_checks.len();
-        for (api_i, (path, severity)) in api_checks.iter().enumerate() {
-            ensure_not_cancelled()?;
-            let test_url = format!("{}{}", base_url, path);
-            let api_pct = 52 + (api_i as u32 * 5 / total_api_checks.max(1) as u32);
-            emitter.emit_detail(
-                "passive",
-                api_pct,
-                100,
-                &format!("Probing API path {}/{}", api_i + 1, total_api_checks),
-                path,
-            );
-            let context = RequestContext::from_scan_config(HttpMethod::Get, &test_url, config)
-                .with_label("api_exposure");
-            if let Ok(response) = runtime
-                .execute_request(context.into_builder(runtime.client()))
-                .await
-            {
-                if response.status().is_success() {
-                    let fingerprint = FindingFingerprint::for_endpoint(
-                        format!("api-exposure:{}", path),
-                        severity.clone(),
-                        HttpMethod::Get,
-                        &test_url,
-                    )
-                    .as_dedup_key();
-                    all_api_exposures.push(ApiExposure {
-                        fingerprint,
-                        endpoint: test_url,
-                        method: "GET".to_string(),
-                        description: format!("API endpoint discovered: {}", path),
-                        severity: severity.clone(),
-                    });
-                }
-            }
-        }
+        let base_url = request.url.trim_end_matches('/').to_string();
+        all_api_exposures
+            .extend(probe_api_paths(&api_checks, &base_url, &runtime, config, &emitter).await);
+        ensure_not_cancelled()?;
 
         emitter.emit("passive", 58, 100, "Checking for data exposure...");
         for (de_i, endpoint) in inventory.endpoints.iter().enumerate() {
@@ -426,9 +385,13 @@ pub async fn run_scan(
                 "/admin, /wp-admin, /phpmyadmin",
             );
             ensure_not_cancelled()?;
-            let admin_vulns =
-                super::rules::exposed_services::check_admin_panels(&request.url, runtime.client())
-                    .await;
+            let admin_vulns = super::rules::exposed_services::check_admin_panels(
+                &request.url,
+                &runtime,
+                config,
+                in_flight_limit(config),
+            )
+            .await;
             all_vulnerabilities.extend(admin_vulns);
         }
     }
@@ -702,6 +665,192 @@ fn calculate_security_score(
     let score = (100 - total_deduction).max(0);
 
     score as u32
+}
+
+struct PassiveHit {
+    index: usize,
+    status: u16,
+    headers: reqwest::header::HeaderMap,
+    body: String,
+    vulns: Vec<Vulnerability>,
+    auth_failed: bool,
+    auth_validated: bool,
+}
+
+fn in_flight_limit(config: &ScanConfig) -> usize {
+    let raw = if config.max_in_flight == 0 {
+        8
+    } else {
+        config.max_in_flight
+    };
+    raw.clamp(1, 32) as usize
+}
+
+fn truncate_body(mut body: String) -> String {
+    if body.len() <= MAX_ANALYSIS_BODY {
+        return body;
+    }
+    let mut end = MAX_ANALYSIS_BODY;
+    while end > 0 && !body.is_char_boundary(end) {
+        end -= 1;
+    }
+    body.truncate(end);
+    body
+}
+
+async fn fetch_passive_endpoints(
+    endpoints: &[super::domain::InventoryEndpoint],
+    runtime: &ScanRuntime,
+    config: &ScanConfig,
+    emitter: &ProgressEmitter,
+    endpoint_count: u32,
+    anonymous: bool,
+) -> Vec<PassiveHit> {
+    let limit = in_flight_limit(config);
+    let semaphore = Arc::new(Semaphore::new(limit));
+    let config = Arc::new(config.clone());
+    let mut tasks = JoinSet::new();
+
+    for (index, endpoint) in endpoints.iter().cloned().enumerate() {
+        let runtime = runtime.clone();
+        let config = config.clone();
+        let semaphore = semaphore.clone();
+        let emitter = emitter.clone();
+        tasks.spawn(async move {
+            let Ok(_permit) = semaphore.acquire_owned().await else {
+                return None;
+            };
+            if crate::cancel_scan_requested() {
+                return None;
+            }
+            let pct = 22 + (index as u32 * 28 / endpoint_count.max(1));
+            emitter.emit_detail(
+                "passive",
+                pct,
+                100,
+                &format!("Analyzing endpoint {}/{}", index + 1, endpoint_count),
+                &shorten_url(&endpoint.url),
+            );
+            let passive_method = match endpoint.method {
+                HttpMethod::Get | HttpMethod::Head | HttpMethod::Options => endpoint.method,
+                _ => HttpMethod::Options,
+            };
+            let context = RequestContext::from_scan_config(passive_method, &endpoint.url, &config)
+                .with_label("passive");
+            let request_builder = apply_endpoint_defaults(
+                context.into_builder(runtime.client()),
+                &endpoint,
+                "baseline",
+            );
+            let Ok(response) = runtime.execute_request(request_builder).await else {
+                return None;
+            };
+            let status = response.status().as_u16();
+            let headers = response.headers().clone();
+            let body = truncate_body(response.text().await.unwrap_or_default());
+            let auth_candidate = !anonymous
+                && (endpoint.tags.contains(&super::domain::EndpointTag::Admin)
+                    || endpoint
+                        .tags
+                        .contains(&super::domain::EndpointTag::AuthRelated)
+                    || endpoint.tags.contains(&super::domain::EndpointTag::Api)
+                    || endpoint.url.to_lowercase().contains("/graphql"));
+            let vulns =
+                super::passive::analyze_response(&endpoint.url, status, &headers, &body, &config);
+            Some(PassiveHit {
+                index,
+                status,
+                headers,
+                body,
+                vulns,
+                auth_failed: auth_candidate && (status == 401 || status == 403),
+                auth_validated: auth_candidate && !(status == 401 || status == 403),
+            })
+        });
+    }
+
+    let mut hits = Vec::new();
+    while let Some(joined) = tasks.join_next().await {
+        if let Ok(Some(hit)) = joined {
+            hits.push(hit);
+        }
+    }
+    hits.sort_by_key(|hit| hit.index);
+    hits
+}
+
+async fn probe_api_paths(
+    api_checks: &[(&str, Severity)],
+    base_url: &str,
+    runtime: &ScanRuntime,
+    config: &ScanConfig,
+    emitter: &ProgressEmitter,
+) -> Vec<ApiExposure> {
+    let limit = in_flight_limit(config);
+    let semaphore = Arc::new(Semaphore::new(limit));
+    let config = Arc::new(config.clone());
+    let total = api_checks.len().max(1);
+    let mut tasks = JoinSet::new();
+
+    for (index, (path, severity)) in api_checks.iter().cloned().enumerate() {
+        let path = path.to_string();
+        let runtime = runtime.clone();
+        let config = config.clone();
+        let semaphore = semaphore.clone();
+        let emitter = emitter.clone();
+        let base_url = base_url.to_string();
+        tasks.spawn(async move {
+            let Ok(_permit) = semaphore.acquire_owned().await else {
+                return None;
+            };
+            if crate::cancel_scan_requested() {
+                return None;
+            }
+            let test_url = format!("{base_url}{path}");
+            let api_pct = 52 + (index as u32 * 5 / total as u32);
+            emitter.emit_detail(
+                "passive",
+                api_pct,
+                100,
+                &format!("Probing API path {}/{}", index + 1, total),
+                &path,
+            );
+            let context = RequestContext::from_scan_config(HttpMethod::Get, &test_url, &config)
+                .with_label("api_exposure");
+            let Ok(response) = runtime
+                .execute_request(context.into_builder(runtime.client()))
+                .await
+            else {
+                return None;
+            };
+            if !response.status().is_success() {
+                return None;
+            }
+            let fingerprint = FindingFingerprint::for_endpoint(
+                format!("api-exposure:{path}"),
+                severity.clone(),
+                HttpMethod::Get,
+                &test_url,
+            )
+            .as_dedup_key();
+            Some(ApiExposure {
+                fingerprint,
+                endpoint: test_url,
+                method: "GET".to_string(),
+                description: format!("API endpoint discovered: {path}"),
+                severity,
+            })
+        });
+    }
+
+    let mut exposures = Vec::new();
+    while let Some(joined) = tasks.join_next().await {
+        if let Ok(Some(exposure)) = joined {
+            exposures.push(exposure);
+        }
+    }
+    exposures.sort_by(|left, right| left.endpoint.cmp(&right.endpoint));
+    exposures
 }
 
 fn shorten_url(url: &str) -> String {

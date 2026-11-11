@@ -88,7 +88,10 @@ impl RecordedProgressSink {
 
 impl ProgressSink for RecordedProgressSink {
     fn emit(&self, progress: &ScanProgress) {
-        self.events.lock().expect("progress lock").push(progress.clone());
+        self.events
+            .lock()
+            .expect("progress lock")
+            .push(progress.clone());
     }
 }
 

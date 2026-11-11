@@ -1,4 +1,8 @@
-use crate::{Confidence, Severity, Vulnerability};
+use super::super::domain::{HttpMethod, RequestContext, ScanRuntime};
+use crate::{Confidence, ScanConfig, Severity, Vulnerability};
+use std::sync::Arc;
+use tokio::sync::Semaphore;
+use tokio::task::JoinSet;
 use tracing::info;
 
 static SUPABASE_PATTERNS: &[&str] = &[
@@ -288,51 +292,79 @@ static ADMIN_PANELS: &[AdminPanel] = &[
     },
 ];
 
-pub async fn check_admin_panels(base_url: &str, client: &reqwest::Client) -> Vec<Vulnerability> {
-    let mut vulns = Vec::new();
-    let base = base_url.trim_end_matches('/');
+pub async fn check_admin_panels(
+    base_url: &str,
+    runtime: &ScanRuntime,
+    config: &ScanConfig,
+    limit: usize,
+) -> Vec<Vulnerability> {
+    let base = base_url.trim_end_matches('/').to_string();
+    let semaphore = Arc::new(Semaphore::new(limit.max(1)));
+    let config = Arc::new(config.clone());
+    let mut tasks = JoinSet::new();
 
     for panel in ADMIN_PANELS {
-        let test_url = format!("{}{}", base, panel.path);
-        if let Ok(resp) = client.get(&test_url).send().await {
-            if resp.status().is_success() {
-                let body = resp.text().await.unwrap_or_default();
-                let body_lower = body.to_lowercase();
-                let matched = panel
-                    .signatures
-                    .iter()
-                    .any(|sig| body_lower.contains(&sig.to_lowercase()));
-                if matched {
-                    vulns.push(Vulnerability {
-                        id: panel.id.to_string(),
-                        title: format!("Exposed: {}", panel.title),
-                        description: format!(
-                            "{} is publicly accessible at {}",
-                            panel.title, panel.path
-                        ),
-                        severity: if panel.id == "exposed-phpinfo" || panel.id == "exposed-debugbar"
-                        {
-                            Severity::High
-                        } else {
-                            Severity::High
-                        },
-                        confidence: Confidence::Confirmed,
-                        category: "API8:2023 - Security Misconfiguration".to_string(),
-                        location: test_url.clone(),
-                        evidence: format!("HTTP 200 at {} with matching content", panel.path),
-                        impact: format!("{} interface exposed to the internet", panel.title),
-                        remediation: format!(
-                            "Restrict access to {} via IP whitelist or remove from production",
-                            panel.path
-                        ),
-                        affected_endpoints: vec![test_url],
-                        ..Default::default()
-                    });
-                }
+        let runtime = runtime.clone();
+        let config = config.clone();
+        let semaphore = semaphore.clone();
+        let base = base.clone();
+        let path = panel.path;
+        let id = panel.id;
+        let title = panel.title;
+        let signatures = panel.signatures;
+        tasks.spawn(async move {
+            let Ok(_permit) = semaphore.acquire_owned().await else {
+                return None;
+            };
+            if crate::cancel_scan_requested() {
+                return None;
             }
-        }
+            let test_url = format!("{base}{path}");
+            let context = RequestContext::from_scan_config(HttpMethod::Get, &test_url, &config)
+                .with_label("admin_panel");
+            let Ok(response) = runtime
+                .execute_request(context.into_builder(runtime.client()))
+                .await
+            else {
+                return None;
+            };
+            if !response.status().is_success() {
+                return None;
+            }
+            let body = response.text().await.unwrap_or_default();
+            let body_lower = body.to_lowercase();
+            let matched = signatures
+                .iter()
+                .any(|signature| body_lower.contains(&signature.to_lowercase()));
+            if !matched {
+                return None;
+            }
+            Some(Vulnerability {
+                id: id.to_string(),
+                title: format!("Exposed: {title}"),
+                description: format!("{title} is publicly accessible at {path}"),
+                severity: Severity::High,
+                confidence: Confidence::Confirmed,
+                category: "API8:2023 - Security Misconfiguration".to_string(),
+                location: test_url.clone(),
+                evidence: format!("HTTP 200 at {path} with matching content"),
+                impact: format!("{title} interface exposed to the internet"),
+                remediation: format!(
+                    "Restrict access to {path} via IP whitelist or remove from production"
+                ),
+                affected_endpoints: vec![test_url],
+                ..Default::default()
+            })
+        });
     }
 
+    let mut vulns = Vec::new();
+    while let Some(joined) = tasks.join_next().await {
+        if let Ok(Some(vulnerability)) = joined {
+            vulns.push(vulnerability);
+        }
+    }
+    vulns.sort_by(|left, right| left.location.cmp(&right.location));
     vulns
 }
 

@@ -1030,7 +1030,8 @@ async fn test_method_tampering(
     let allow = match probe_client
         .request(reqwest::Method::OPTIONS, &endpoint.url)
         .send()
-        .await {
+        .await
+    {
         Ok(response) => response
             .headers()
             .get("allow")
@@ -1131,10 +1132,7 @@ async fn test_host_header_injection(
         if location.to_lowercase().contains(CANARY) {
             evidence.push_header("location", location);
         } else {
-            evidence.push_match(
-                "body",
-                body.chars().take(200).collect::<String>(),
-            );
+            evidence.push_match("body", body.chars().take(200).collect::<String>());
         }
         vulnerabilities.push(build_vulnerability(
             "active-host-header",

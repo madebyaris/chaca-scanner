@@ -1,6 +1,6 @@
 [package]
 name = "chaca-core"
-version = "0.7.0"
+version = "0.8.0"
 description = "Framework-agnostic web security scanning engine for Chaca"
 authors = ["Aris Setiawan"]
 edition = "2021"

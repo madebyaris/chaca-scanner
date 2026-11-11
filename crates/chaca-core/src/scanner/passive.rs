@@ -422,7 +422,9 @@ pub fn analyze_response(
                 if let Ok(cookie_str) = cookie_header.to_str() {
                     let lower = cookie_str.to_lowercase();
                     let name = cookie_str.splitn(2, '=').next().unwrap_or("").trim();
-                    if lower.contains("samesite=none") && !lower.contains("secure") && !name.is_empty()
+                    if lower.contains("samesite=none")
+                        && !lower.contains("secure")
+                        && !name.is_empty()
                     {
                         samesite_offenders.push(name.to_string());
                     }
