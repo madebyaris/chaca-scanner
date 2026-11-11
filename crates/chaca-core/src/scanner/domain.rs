@@ -329,7 +329,11 @@ impl RequestContext {
                 self.method.as_str(),
                 self.url,
                 label,
-                format!("{}; {}", self.auth_profile.mode_label(), rendered_headers.join(", "))
+                format!(
+                    "{}; {}",
+                    self.auth_profile.mode_label(),
+                    rendered_headers.join(", ")
+                )
             )
         }
     }
@@ -542,6 +546,7 @@ impl FindingFingerprint {
     }
 }
 
+#[derive(Clone)]
 pub struct ScanRuntime {
     client: reqwest::Client,
     min_interval: Option<Duration>,
@@ -556,7 +561,7 @@ impl ScanRuntime {
         if config.accept_invalid_certs {
             builder = builder.danger_accept_invalid_certs(true);
         }
-        builder = builder.cookie_store(true);
+        builder = builder.cookie_store(true).pool_max_idle_per_host(16);
         if !config.custom_user_agent.is_empty() {
             builder = builder.user_agent(&config.custom_user_agent);
         }
@@ -589,14 +594,22 @@ impl ScanRuntime {
         builder: reqwest::RequestBuilder,
     ) -> Result<reqwest::Response, reqwest::Error> {
         if let Some(min_interval) = self.min_interval {
-            let mut last_request_at = self.last_request_at.lock().await;
-            if let Some(last) = *last_request_at {
-                let elapsed = last.elapsed();
-                if elapsed < min_interval {
-                    tokio::time::sleep(min_interval - elapsed).await;
-                }
+            // Reserve the next start time, then sleep outside the lock so
+            // other requests can reserve their own slots.
+            let wait = {
+                let mut last_request_at = self.last_request_at.lock().await;
+                let now = Instant::now();
+                let scheduled = match *last_request_at {
+                    Some(previous) => previous + min_interval,
+                    None => now,
+                };
+                let scheduled = if scheduled < now { now } else { scheduled };
+                *last_request_at = Some(scheduled);
+                scheduled.saturating_duration_since(now)
+            };
+            if !wait.is_zero() {
+                tokio::time::sleep(wait).await;
             }
-            *last_request_at = Some(Instant::now());
         }
 
         self.request_count.fetch_add(1, Ordering::Relaxed);

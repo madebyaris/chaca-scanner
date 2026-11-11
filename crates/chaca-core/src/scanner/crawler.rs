@@ -778,41 +778,68 @@ async fn fetch_known_paths(
     let mut discovered = Vec::new();
     let base = url.trim_end_matches('/');
 
-    let robots_url = format!("{}/robots.txt", base);
-    let robots_context =
-        RequestContext::from_scan_config(HttpMethod::Get, &robots_url, config).with_label("robots");
-    if let Ok(response) = runtime
-        .execute_request(robots_context.into_builder(runtime.client()))
-        .await
-    {
-        if response.status().is_success() {
-            let body = response.text().await.unwrap_or_default();
-            let path_re = Regex::new(r#"(?im)^(?:allow|disallow)\s*:\s*(/[^\s#]*)"#).unwrap();
-            for captures in path_re.captures_iter(&body) {
-                if let Some(path) = captures.get(1) {
-                    discovered.push((path.as_str().to_string(), EndpointSource::RobotsTxt));
-                }
-            }
-        }
-    }
-
-    let sitemap_url = format!("{}/sitemap.xml", base);
-    let sitemap_context = RequestContext::from_scan_config(HttpMethod::Get, &sitemap_url, config)
-        .with_label("sitemap");
-    if let Ok(response) = runtime
-        .execute_request(sitemap_context.into_builder(runtime.client()))
-        .await
-    {
-        if response.status().is_success() {
-            let body = response.text().await.unwrap_or_default();
-            let loc_re = Regex::new(r#"(?is)<loc>\s*([^<]+)\s*</loc>"#).unwrap();
-            for captures in loc_re.captures_iter(&body) {
-                if let Some(loc) = captures.get(1) {
-                    discovered.push((loc.as_str().to_string(), EndpointSource::SitemapXml));
-                }
-            }
-        }
-    }
+    let robots_runtime = runtime.clone();
+    let sitemap_runtime = runtime.clone();
+    let base_robots = base.to_string();
+    let base_sitemap = base.to_string();
+    let config_robots = config.clone();
+    let config_sitemap = config.clone();
+    let (robots, sitemap) = tokio::join!(
+        fetch_text_paths(
+            base_robots,
+            robots_runtime,
+            config_robots,
+            "/robots.txt",
+            "robots",
+            r#"(?im)^(?:allow|disallow)\s*:\s*(/[^\s#]*)"#,
+            EndpointSource::RobotsTxt,
+        ),
+        fetch_text_paths(
+            base_sitemap,
+            sitemap_runtime,
+            config_sitemap,
+            "/sitemap.xml",
+            "sitemap",
+            r#"(?is)<loc>\s*([^<]+)\s*</loc>"#,
+            EndpointSource::SitemapXml,
+        ),
+    );
+    discovered.extend(robots);
+    discovered.extend(sitemap);
 
     Ok(discovered)
+}
+
+async fn fetch_text_paths(
+    base: String,
+    runtime: ScanRuntime,
+    config: ScanConfig,
+    suffix: &str,
+    label: &str,
+    pattern: &str,
+    source: EndpointSource,
+) -> Vec<(String, EndpointSource)> {
+    let mut discovered = Vec::new();
+    let url = format!("{base}{suffix}");
+    let context =
+        RequestContext::from_scan_config(HttpMethod::Get, &url, &config).with_label(label);
+    let Ok(response) = runtime
+        .execute_request(context.into_builder(runtime.client()))
+        .await
+    else {
+        return discovered;
+    };
+    if !response.status().is_success() {
+        return discovered;
+    }
+    let body = response.text().await.unwrap_or_default();
+    let Ok(expression) = Regex::new(pattern) else {
+        return discovered;
+    };
+    for captures in expression.captures_iter(&body) {
+        if let Some(path) = captures.get(1) {
+            discovered.push((path.as_str().trim().to_string(), source));
+        }
+    }
+    discovered
 }

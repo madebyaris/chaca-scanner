@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.7.0-18181b?style=flat-square" alt="version" />
+  <img src="https://img.shields.io/badge/version-0.8.0-18181b?style=flat-square" alt="version" />
   <img src="https://img.shields.io/badge/license-MIT-18181b?style=flat-square" alt="license" />
   <img src="https://img.shields.io/badge/Tauri-2-18181b?style=flat-square" alt="tauri" />
   <img src="https://img.shields.io/badge/React-19-18181b?style=flat-square" alt="react" />
@@ -113,7 +113,7 @@ Pre-built binaries for **Windows (x64)** and **Linux (x64 AppImage)** are publis
 
 1. Bump version in `package.json` and `src-tauri/tauri.conf.json`
 2. Commit and push
-3. Create and push a version tag: `git tag v0.7.0 && git push origin v0.7.0`
+3. Create and push a version tag: `git tag v0.8.0 && git push origin v0.8.0`
 4. GitHub Actions builds all platforms and creates a draft release
 5. Edit the draft release, add release notes, and publish
 
@@ -122,9 +122,9 @@ Pre-built binaries for **Windows (x64)** and **Linux (x64 AppImage)** are publis
 | Platform | Artifact | Notes |
 |----------|----------|-------|
 | macOS (Apple Silicon) | Build locally | For now, macOS developers should compile Chaca themselves with `npm run tauri build` |
-| Windows (x64) | `Chaca_0.7.0_x64-portable.exe` | Run directly; requires [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) on Windows 10 |
-| Windows (x64) | `Chaca_0.7.0_x64-setup.nsis.exe` | Installer (includes WebView2) |
-| Linux (x64) | `Chaca_0.7.0_amd64.AppImage` | Run directly |
+| Windows (x64) | `Chaca_0.8.0_x64-portable.exe` | Run directly; requires [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) on Windows 10 |
+| Windows (x64) | `Chaca_0.8.0_x64-setup.nsis.exe` | Installer (includes WebView2) |
+| Linux (x64) | `Chaca_0.8.0_amd64.AppImage` | Run directly |
 
 **Note:** Current releases are unsigned. Windows may show security warnings, and macOS public distribution is temporarily blocked until Chaca is signed/notarized. Ensure **Settings → Actions → General → Workflow permissions** is set to "Read and write permissions" so the release workflow can create releases.
 

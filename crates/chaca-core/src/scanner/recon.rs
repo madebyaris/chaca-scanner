@@ -338,7 +338,10 @@ fn blocking_dns_lookup(host: &str) -> DnsCollection {
                 .collect();
             let data = data.join(" ");
             if data.len() > 120 {
-                records.push(format!("TXT: {}…", data.chars().take(120).collect::<String>()));
+                records.push(format!(
+                    "TXT: {}…",
+                    data.chars().take(120).collect::<String>()
+                ));
             } else {
                 records.push(format!("TXT: {data}"));
             }

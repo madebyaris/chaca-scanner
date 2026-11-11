@@ -53,14 +53,46 @@ fn is_excluded(path: &Path) -> bool {
 /// Known secret patterns (provider-format regexes)
 fn secret_patterns() -> Vec<(&'static str, &'static str, Severity)> {
     vec![
-        ("aws_secret", r#"(?i)aws_secret_access_key\s*=\s*["']?([A-Za-z0-9/+=]{40})["']?"#, Severity::Critical),
-        ("aws_key", r#"(?i)aws_access_key_id\s*=\s*["']?([A-Za-z0-9]{20})["']?"#, Severity::High),
-        ("github_token", r"(?i)(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,}", Severity::Critical),
-        ("slack_token", r"(?i)xox[baprs]-[0-9a-zA-Z-]{10,}", Severity::High),
-        ("stripe_key", r"(?i)(?:sk|pk)_(?:live|test)_[0-9a-zA-Z]{24,}", Severity::Critical),
-        ("generic_api_key", r#"(?i)(?:api[_-]?key|apikey)\s*[:=]\s*["']?([a-zA-Z0-9_\-]{20,})["']?"#, Severity::High),
-        ("private_key", r"-----BEGIN (?:RSA |EC |DSA )?PRIVATE KEY-----", Severity::Critical),
-        ("password", r#"(?i)password\s*[:=]\s*["']?([^\s"']{8,})["']?"#, Severity::High),
+        (
+            "aws_secret",
+            r#"(?i)aws_secret_access_key\s*=\s*["']?([A-Za-z0-9/+=]{40})["']?"#,
+            Severity::Critical,
+        ),
+        (
+            "aws_key",
+            r#"(?i)aws_access_key_id\s*=\s*["']?([A-Za-z0-9]{20})["']?"#,
+            Severity::High,
+        ),
+        (
+            "github_token",
+            r"(?i)(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,}",
+            Severity::Critical,
+        ),
+        (
+            "slack_token",
+            r"(?i)xox[baprs]-[0-9a-zA-Z-]{10,}",
+            Severity::High,
+        ),
+        (
+            "stripe_key",
+            r"(?i)(?:sk|pk)_(?:live|test)_[0-9a-zA-Z]{24,}",
+            Severity::Critical,
+        ),
+        (
+            "generic_api_key",
+            r#"(?i)(?:api[_-]?key|apikey)\s*[:=]\s*["']?([a-zA-Z0-9_\-]{20,})["']?"#,
+            Severity::High,
+        ),
+        (
+            "private_key",
+            r"-----BEGIN (?:RSA |EC |DSA )?PRIVATE KEY-----",
+            Severity::Critical,
+        ),
+        (
+            "password",
+            r#"(?i)password\s*[:=]\s*["']?([^\s"']{8,})["']?"#,
+            Severity::High,
+        ),
     ]
 }
 
@@ -68,8 +100,16 @@ fn secret_patterns() -> Vec<(&'static str, &'static str, Severity)> {
 fn config_file_patterns() -> Vec<(&'static str, &'static str, Severity)> {
     vec![
         (".env", r"\.env$", Severity::High),
-        ("config_secrets", r"(?:config|settings).*\.(?:json|yaml|yml|toml)$", Severity::Medium),
-        ("ci_secrets", r"\.(?:github|gitlab)/workflows/.*\.ya?ml$", Severity::Medium),
+        (
+            "config_secrets",
+            r"(?:config|settings).*\.(?:json|yaml|yml|toml)$",
+            Severity::Medium,
+        ),
+        (
+            "ci_secrets",
+            r"\.(?:github|gitlab)/workflows/.*\.ya?ml$",
+            Severity::Medium,
+        ),
         ("dockerfile", r"Dockerfile", Severity::Low),
         ("k8s_secret", r".*secret.*\.ya?ml$", Severity::High),
         ("terraform", r"\.tf$", Severity::Low),
@@ -79,9 +119,15 @@ fn config_file_patterns() -> Vec<(&'static str, &'static str, Severity)> {
 /// Endpoint extraction patterns (pattern, capture_group 1 = path)
 fn endpoint_patterns() -> Vec<(&'static str, &'static str)> {
     vec![
-        ("express_route", r#"(?:app|router)\.(?:get|post|put|delete|patch)\s*\(\s*['"]([^'"]+)['"]"#),
+        (
+            "express_route",
+            r#"(?:app|router)\.(?:get|post|put|delete|patch)\s*\(\s*['"]([^'"]+)['"]"#,
+        ),
         ("nextjs_route", r#"(?:api|app)/([a-zA-Z0-9/_\-{}]+)"#),
-        ("fastapi", r#"(?:app|router)\.(?:get|post|put|delete)\s*\(\s*['"]([^'"]+)['"]"#),
+        (
+            "fastapi",
+            r#"(?:app|router)\.(?:get|post|put|delete)\s*\(\s*['"]([^'"]+)['"]"#,
+        ),
         ("graphql", r#"(?:graphql|gql)\s*\(\s*['"]([^'"]+)['"]"#),
         ("url_string", r#"['"](https?://[^'"]+)['"]"#),
     ]
@@ -126,7 +172,9 @@ fn code_smell_patterns() -> Vec<(&'static str, &'static str, Severity, &'static 
 /// Extensions eligible for each code smell rule
 fn smell_extensions(rule_id: &str) -> Option<&'static [&'static str]> {
     match rule_id {
-        "folder-xss-sink" => Some(&["js", "ts", "jsx", "tsx", "mjs", "cjs", "html", "vue", "svelte"]),
+        "folder-xss-sink" => Some(&[
+            "js", "ts", "jsx", "tsx", "mjs", "cjs", "html", "vue", "svelte",
+        ]),
         "folder-insecure-random" => Some(&["js", "ts", "jsx", "tsx", "mjs", "cjs", "php", "py"]),
         _ => None,
     }
@@ -200,14 +248,7 @@ pub fn scan_folder(path: &str) -> Result<ScanResult, String> {
 
     let smell_regexes: Vec<_> = code_smell_patterns()
         .into_iter()
-        .map(|(id, pat, severity, cwe)| {
-            (
-                id,
-                Regex::new(pat).unwrap(),
-                severity,
-                cwe,
-            )
-        })
+        .map(|(id, pat, severity, cwe)| (id, Regex::new(pat).unwrap(), severity, cwe))
         .collect();
 
     let mut files_scanned = 0u32;
@@ -276,11 +317,38 @@ pub fn scan_folder(path: &str) -> Result<ScanResult, String> {
         let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("");
         let is_text = matches!(
             ext,
-            "js" | "ts" | "jsx" | "tsx" | "py" | "rb" | "go" | "java" | "kt"
-                | "json" | "yaml" | "yml" | "toml" | "env" | "properties" | "cfg" | "ini"
-                | "tf" | "dockerfile" | "Dockerfile" | "graphql" | "gql" | "html"
-                | "vue" | "svelte" | "php" | "cs" | "rs" | "sh"
-        ) || p.file_name().map(|n| n.to_string_lossy().starts_with('.')).unwrap_or(false);
+            "js" | "ts"
+                | "jsx"
+                | "tsx"
+                | "py"
+                | "rb"
+                | "go"
+                | "java"
+                | "kt"
+                | "json"
+                | "yaml"
+                | "yml"
+                | "toml"
+                | "env"
+                | "properties"
+                | "cfg"
+                | "ini"
+                | "tf"
+                | "dockerfile"
+                | "Dockerfile"
+                | "graphql"
+                | "gql"
+                | "html"
+                | "vue"
+                | "svelte"
+                | "php"
+                | "cs"
+                | "rs"
+                | "sh"
+        ) || p
+            .file_name()
+            .map(|n| n.to_string_lossy().starts_with('.'))
+            .unwrap_or(false);
 
         if !is_text {
             continue;
@@ -297,7 +365,10 @@ pub fn scan_folder(path: &str) -> Result<ScanResult, String> {
         // Secrets scan
         for (rule_id, re, severity) in &secret_regexes {
             for cap in re.captures_iter(&content) {
-                let matched = cap.get(1).map(|m| m.as_str()).unwrap_or_else(|| cap.get(0).map(|m| m.as_str()).unwrap_or(""));
+                let matched = cap
+                    .get(1)
+                    .map(|m| m.as_str())
+                    .unwrap_or_else(|| cap.get(0).map(|m| m.as_str()).unwrap_or(""));
                 let confidence = if matched.len() > 20 && shannon_entropy(matched) > 4.0 {
                     Confidence::Firm
                 } else {
@@ -306,7 +377,11 @@ pub fn scan_folder(path: &str) -> Result<ScanResult, String> {
                 vulnerabilities.push(Vulnerability {
                     id: format!("folder-secret-{}-{}", rule_id, files_scanned),
                     rule_id: (*rule_id).to_string(),
-                    fingerprint: format!("{}:{}", rel_path, cap.get(0).map(|m| m.as_str()).unwrap_or("")),
+                    fingerprint: format!(
+                        "{}:{}",
+                        rel_path,
+                        cap.get(0).map(|m| m.as_str()).unwrap_or("")
+                    ),
                     title: format!("Potential secret: {}", rule_id.replace('_', " ")),
                     description: format!("Possible {} detected in {}", rule_id, rel_path),
                     severity: severity.clone(),
@@ -314,8 +389,11 @@ pub fn scan_folder(path: &str) -> Result<ScanResult, String> {
                     category: "secret-exposure".to_string(),
                     location: format!("file://{}", rel_path),
                     evidence: "[REDACTED]".to_string(),
-                    impact: "Secret may be exposed in source control or build artifacts.".to_string(),
-                    remediation: "Remove the secret and use environment variables or a secrets manager.".to_string(),
+                    impact: "Secret may be exposed in source control or build artifacts."
+                        .to_string(),
+                    remediation:
+                        "Remove the secret and use environment variables or a secrets manager."
+                            .to_string(),
                     affected_endpoints: vec![],
                     evidence_items: vec![],
                     references: vec![],
@@ -350,7 +428,12 @@ pub fn scan_folder(path: &str) -> Result<ScanResult, String> {
                         .unwrap_or("");
                     let host_lower = host.to_lowercase();
                     let private = [
-                        "localhost", "127.0.0.1", "0.0.0.0", "192.168.", "10.", "169.254.",
+                        "localhost",
+                        "127.0.0.1",
+                        "0.0.0.0",
+                        "192.168.",
+                        "10.",
+                        "169.254.",
                     ]
                     .iter()
                     .any(|prefix| host_lower.starts_with(prefix));
@@ -428,15 +511,27 @@ pub fn scan_folder(path: &str) -> Result<ScanResult, String> {
                     continue;
                 }
                 let lower_key = key.to_lowercase();
-                let sensitive = ["secret", "key", "token", "pass", "credential", "jwt", "signing"]
-                    .iter()
-                    .any(|needle| lower_key.contains(needle));
+                let sensitive = [
+                    "secret",
+                    "key",
+                    "token",
+                    "pass",
+                    "credential",
+                    "jwt",
+                    "signing",
+                ]
+                .iter()
+                .any(|needle| lower_key.contains(needle));
                 data_exposures.push(DataExposure {
                     fingerprint: format!("{}:{}", rel_path, key),
                     field: key.to_string(),
                     data_type: "env-value".to_string(),
                     location: format!("file://{}", rel_path),
-                    severity: if sensitive { Severity::High } else { Severity::Medium },
+                    severity: if sensitive {
+                        Severity::High
+                    } else {
+                        Severity::Medium
+                    },
                     confidence: Confidence::Firm,
                     matched_value: redact_value(value),
                 });
@@ -486,11 +581,26 @@ pub fn scan_folder(path: &str) -> Result<ScanResult, String> {
         }
     }
 
-    let critical = vulnerabilities.iter().filter(|v| matches!(v.severity, Severity::Critical)).count();
-    let high = vulnerabilities.iter().filter(|v| matches!(v.severity, Severity::High)).count();
-    let medium = vulnerabilities.iter().filter(|v| matches!(v.severity, Severity::Medium)).count();
-    let low = vulnerabilities.iter().filter(|v| matches!(v.severity, Severity::Low)).count();
-    let info_count = vulnerabilities.iter().filter(|v| matches!(v.severity, Severity::Info)).count()
+    let critical = vulnerabilities
+        .iter()
+        .filter(|v| matches!(v.severity, Severity::Critical))
+        .count();
+    let high = vulnerabilities
+        .iter()
+        .filter(|v| matches!(v.severity, Severity::High))
+        .count();
+    let medium = vulnerabilities
+        .iter()
+        .filter(|v| matches!(v.severity, Severity::Medium))
+        .count();
+    let low = vulnerabilities
+        .iter()
+        .filter(|v| matches!(v.severity, Severity::Low))
+        .count();
+    let info_count = vulnerabilities
+        .iter()
+        .filter(|v| matches!(v.severity, Severity::Info))
+        .count()
         + api_exposures.len()
         + data_exposures.len();
 

@@ -112,3 +112,4 @@ A user-friendly desktop security scanner for vibe coders and developers to detec
 | 0.6.0 | 2026-03-12 | Licensing polish: new Gumroad product link, 7-day post-expiry renewal grace period |
 | 0.7.0 | 2026-10-26 | v0.7 Capability Pack: TLS certificate probe (protocol, issuer, SAN, expiry), typed DNS record collection (A/AAAA/MX/NS/SOA/TXT), extended passive header checks, TRACE/XST and Host header active tests, folder code-smell scanning |
 | 0.7.0 | 2026-10-26 | Went fully open source: MIT license added, commercial licensing (Gumroad Pro) removed, all features free for everyone |
+| 0.8.0 | 2026-11-12 | Concurrent passive and API probes, nginx and OpenSSL version advisories, native GPUI shell |

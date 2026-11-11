@@ -11,7 +11,13 @@ pub mod export;
 pub mod progress;
 pub mod scanner;
 
-pub use progress::{FnProgressSink, NullProgressSink, ProgressSink, RecordedProgressSink, ScanProgress};
+pub use progress::{
+    FnProgressSink, NullProgressSink, ProgressSink, RecordedProgressSink, ScanProgress,
+};
+
+fn default_true() -> bool {
+    true
+}
 
 static SCAN_CANCELLED: AtomicBool = AtomicBool::new(false);
 const DEFAULT_CHROME_USER_AGENT: &str =
@@ -51,6 +57,12 @@ pub struct ScanConfig {
     pub custom_user_agent: String,
     pub custom_headers: Vec<HeaderPair>,
     pub rate_limit_rps: u32,
+    /// How many HTTP requests may be in flight at once. `0` means 8.
+    #[serde(default)]
+    pub max_in_flight: u32,
+    /// Match fingerprinted product versions against the local advisory list.
+    #[serde(default = "default_true")]
+    pub known_vuln_checks: bool,
     pub auth_login_enabled: bool,
     pub auth_login_url: String,
     pub auth_login_email: String,
@@ -146,6 +158,8 @@ impl Default for ScanConfig {
             custom_user_agent: DEFAULT_CHROME_USER_AGENT.to_string(),
             custom_headers: Vec::new(),
             rate_limit_rps: 0,
+            max_in_flight: 8,
+            known_vuln_checks: true,
             auth_login_enabled: false,
             auth_login_url: String::new(),
             auth_login_email: String::new(),
