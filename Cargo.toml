@@ -18,6 +18,9 @@ url = "2"
 regex = "1"
 tracing = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
+# zed-async-tar pulls xattr 0.2.3, which still names libc::ENOATTR.
+# libc 0.2.190 removed that constant on Linux.
+libc = "=0.2.189"
 
 # The desktop app ships as a single self-contained binary, so it is worth
 # spending build time to keep the download small and the resident set lean.
