@@ -9,14 +9,33 @@
 //! a branch the same advisory marks fixed, such as `1.30.6` while `1.31.2`
 //! is still affected. OpenSSL entries are end-of-life branches from the
 //! project's release roadmap, not individual CVEs.
+//!
+//! Apache HTTP Server rows come from the 2.4 vulnerability page. Each row has
+//! one fixed release, so an older 2.4 build is not cleared by a later fix the
+//! way an nginx stable branch is. PHP and WordPress rows are support cutoffs
+//! from php.net and wordpress.org. They are not CVE records.
 
 use crate::{Confidence, Severity, TargetInfo, Vulnerability};
 use regex::Regex;
 use std::cmp::Ordering;
 use std::sync::LazyLock;
 
+mod apache_advisories;
+
 const NGINX_REFERENCE: &str = "https://nginx.org/en/security_advisories.html";
 const OPENSSL_REFERENCE: &str = "https://openssl-library.org/roadmap/";
+const APACHE_REFERENCE: &str = "https://httpd.apache.org/security/vulnerabilities_24.html";
+const PHP_REFERENCE: &str = "https://www.php.net/supported-versions.php";
+const WORDPRESS_REFERENCE: &str = "https://wordpress.org/news/2025/06/dropping-security-updates-for-wordpress-versions-4-1-through-4-6/";
+
+pub(crate) struct ApacheAdvisory {
+    pub id: &'static str,
+    pub title: &'static str,
+    pub severity: Severity,
+    pub vulnerable: &'static str,
+    pub fixed: &'static str,
+    pub windows_only: bool,
+}
 
 struct NginxAdvisory {
     id: &'static str,
@@ -626,8 +645,12 @@ const OPENSSL_EOL: &[OpensslEol] = &[
     },
 ];
 
-static PRODUCT_VERSION: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?i)\b(nginx|openssl)[/ ]+v?(\d+(?:\.\d+){1,3})").unwrap());
+static PRODUCT_VERSION: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?i)\b(nginx|openssl|apache|php|wordpress)[/ ]+v?(\d+(?:\.\d+){1,3})").unwrap()
+});
+
+static WORDPRESS_README_VERSION: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)<p[^>]*>\s*Version\s+(\d+\.\d+(?:\.\d+){0,2})").unwrap());
 
 /// Findings for product versions named on this target.
 pub fn match_target(info: &TargetInfo, location: &str) -> Vec<Vulnerability> {
@@ -673,10 +696,45 @@ pub fn match_target(info: &TargetInfo, location: &str) -> Vec<Vulnerability> {
                     }
                     findings.push(openssl_finding(eol, &version, location));
                 }
+            } else if product == "apache" {
+                for advisory in apache_advisories::APACHE {
+                    if advisory.windows_only && !windows {
+                        continue;
+                    }
+                    if !version_affected(&version, advisory.vulnerable, advisory.fixed) {
+                        continue;
+                    }
+                    if !seen.insert(advisory.id) {
+                        continue;
+                    }
+                    findings.push(apache_finding(advisory, &version, location));
+                }
+            } else if product == "php" {
+                if version_below(&version, "8.2.0") && seen.insert("php-unsupported-branch") {
+                    findings.push(php_support_finding(&version, location));
+                }
+            } else if product == "wordpress" {
+                if version_in_half_open(&version, "4.1.0", "4.7.0")
+                    && seen.insert("wordpress-4.1-4.6-unsupported")
+                {
+                    if let Some(finding) = wordpress_support_finding(&version, location) {
+                        findings.push(finding);
+                    }
+                }
             }
         }
     }
     findings
+}
+
+/// Version from a public WordPress `readme.html` body, when that page names one.
+pub fn wordpress_readme_version(body: &str) -> Option<String> {
+    if !body.to_ascii_lowercase().contains("wordpress") {
+        return None;
+    }
+    WORDPRESS_README_VERSION
+        .captures(body)
+        .and_then(|captures| captures.get(1).map(|version| version.as_str().to_string()))
 }
 
 fn version_affected(version: &str, vulnerable: &str, fixed: &str) -> bool {
@@ -816,6 +874,83 @@ fn unmaintained_nginx(version: &str, location: &str) -> Vulnerability {
         cwe: "CWE-1104".to_string(),
         ..Default::default()
     }
+}
+
+fn apache_finding(advisory: &ApacheAdvisory, version: &str, location: &str) -> Vulnerability {
+    Vulnerability {
+        id: advisory.id.to_string(),
+        rule_id: advisory.id.to_string(),
+        title: format!("Apache HTTP Server {}", advisory.title),
+        description: format!(
+            "Detected Apache HTTP Server {version}. The banner is the upstream version string, not a distro package. Upstream advisory: {}. Affected: {}. Fixed in: {}.",
+            advisory.title, advisory.vulnerable, advisory.fixed
+        ),
+        severity: advisory.severity.clone(),
+        confidence: Confidence::Firm,
+        category: "Known vulnerability".to_string(),
+        location: location.to_string(),
+        evidence: format!("Apache/{version}"),
+        impact: "The banner version is inside the range the Apache HTTP Server project published for this advisory.".to_string(),
+        remediation: format!(
+            "Upgrade Apache HTTP Server. The project marks {} fixed.",
+            advisory.fixed
+        ),
+        affected_endpoints: vec![location.to_string()],
+        references: vec![
+            APACHE_REFERENCE.to_string(),
+            format!("https://www.cve.org/CVERecord?id={}", advisory.id),
+        ],
+        cwe: cwe_for_title(advisory.title).to_string(),
+        ..Default::default()
+    }
+}
+
+fn php_support_finding(version: &str, location: &str) -> Vulnerability {
+    Vulnerability {
+        id: "php-unsupported-branch".to_string(),
+        rule_id: "php-unsupported-branch".to_string(),
+        title: "PHP branch no longer receives security updates".to_string(),
+        description: format!(
+            "Detected PHP {version}. The banner is the upstream version string, not a distro package. On 12 November 2026 the PHP project still publishes security fixes for 8.2 (through 31 December 2026), 8.3 (through 31 December 2027), 8.4 (through 31 December 2028), and 8.5 (through 31 December 2029). Branches older than 8.2 do not. This is a support cutoff, not a CVE."
+        ),
+        severity: Severity::Medium,
+        confidence: Confidence::Firm,
+        category: "Support status".to_string(),
+        location: location.to_string(),
+        evidence: format!("PHP/{version}"),
+        impact: "Security issues disclosed after this branch ended stay unpatched by the PHP project.".to_string(),
+        remediation: "Upgrade to PHP 8.2 or a newer branch that still receives security fixes. PHP 8.2's security window ends on 31 December 2026.".to_string(),
+        affected_endpoints: vec![location.to_string()],
+        references: vec![PHP_REFERENCE.to_string()],
+        cwe: "CWE-1104".to_string(),
+        ..Default::default()
+    }
+}
+
+/// Support note for WordPress 4.1 through 4.6. Other versions return nothing.
+pub fn wordpress_support_finding(version: &str, location: &str) -> Option<Vulnerability> {
+    if !version_in_half_open(version, "4.1.0", "4.7.0") {
+        return None;
+    }
+    Some(Vulnerability {
+        id: "wordpress-4.1-4.6-unsupported".to_string(),
+        rule_id: "wordpress-4.1-4.6-unsupported".to_string(),
+        title: "WordPress 4.1 through 4.6 no longer receives security updates".to_string(),
+        description: format!(
+            "Detected WordPress {version}. As of July 2025 the WordPress Security Team no longer provides security updates for versions 4.1 through 4.6. This is a support cutoff, not a CVE. Versions older than 4.1 are not given that date here, because the announcement does not assign them one."
+        ),
+        severity: Severity::Medium,
+        confidence: Confidence::Firm,
+        category: "Support status".to_string(),
+        location: location.to_string(),
+        evidence: format!("WordPress {version}"),
+        impact: "Security issues fixed only in later WordPress branches stay unpatched on this install.".to_string(),
+        remediation: "Upgrade to the current WordPress release.".to_string(),
+        affected_endpoints: vec![location.to_string()],
+        references: vec![WORDPRESS_REFERENCE.to_string()],
+        cwe: "CWE-1104".to_string(),
+        ..Default::default()
+    })
 }
 
 fn openssl_finding(eol: &OpensslEol, version: &str, location: &str) -> Vulnerability {
@@ -992,6 +1127,66 @@ mod tests {
         assert!(!has("nginx/0.8.20", "CVE-2010-2266"));
         assert!(has("nginx/0.8.20 (Windows)", "CVE-2010-2266"));
         assert!(!has("nginx/0.8.41 (Windows)", "CVE-2010-2266"));
+    }
+
+    #[test]
+    fn apache_published_ranges_match_the_banner() {
+        for advisory in apache_advisories::APACHE {
+            assert!(
+                !parse_ranges(advisory.vulnerable).is_empty(),
+                "{} vulnerable spec did not parse",
+                advisory.id
+            );
+            assert!(
+                !parse_fixes(advisory.fixed).is_empty(),
+                "{} fixed spec did not parse",
+                advisory.id
+            );
+            assert!(
+                !advisory.fixed.contains(','),
+                "{} must name one fixed release",
+                advisory.id
+            );
+        }
+
+        assert!(has("Apache/2.4.70", "CVE-2026-119618"));
+        assert!(has("Apache/2.4.70", "CVE-2026-106023"));
+        assert!(has("Apache/2.4.70", "CVE-2026-109163"));
+        assert!(!has("Apache/2.4.70", "CVE-2026-59685"));
+        assert!(has("Apache/2.4.52 (Win64)", "CVE-2026-59685"));
+        assert!(!has("Apache/2.4.52 (Unix)", "CVE-2026-59685"));
+        assert!(has("Apache/2.4.66", "CVE-2026-28780"));
+        assert!(!has("Apache/2.4.67", "CVE-2026-28780"));
+        assert!(ids("Apache/2.4.71").is_empty());
+        assert!(ids("Apache-Coyote/1.1").is_empty());
+    }
+
+    #[test]
+    fn php_support_cutoff_is_older_than_8_2() {
+        assert!(has("PHP/8.1.32", "php-unsupported-branch"));
+        assert!(has("PHP/7.4.33", "php-unsupported-branch"));
+        assert!(!has("PHP/8.2.0", "php-unsupported-branch"));
+        assert!(!has("PHP/8.3.30", "php-unsupported-branch"));
+        assert!(!has("PHP/8.4.1", "php-unsupported-branch"));
+        assert!(!has("PHP/8.5.0", "php-unsupported-branch"));
+        let finding = match_target(&info_with_server("PHP/8.1.32"), "https://example.test/");
+        assert_eq!(finding[0].category, "Support status");
+        assert!(!finding[0].id.starts_with("CVE-"));
+    }
+
+    #[test]
+    fn wordpress_support_cutoff_is_only_4_1_through_4_6() {
+        assert!(has("WordPress 4.1", "wordpress-4.1-4.6-unsupported"));
+        assert!(has("WordPress 4.6.29", "wordpress-4.1-4.6-unsupported"));
+        assert!(!has("WordPress 4.0.38", "wordpress-4.1-4.6-unsupported"));
+        assert!(!has("WordPress 4.7", "wordpress-4.1-4.6-unsupported"));
+        assert!(!has("WordPress 6.8.6", "wordpress-4.1-4.6-unsupported"));
+
+        let readme =
+            r#"<html><title>WordPress</title><p style="text-align:center;">Version 4.6</p></html>"#;
+        assert_eq!(wordpress_readme_version(readme).as_deref(), Some("4.6"));
+        assert!(wordpress_readme_version("<p>Version 4.6</p>").is_none());
+        assert!(wordpress_support_finding("6.8.6", "https://example.test/").is_none());
     }
 
     #[test]
