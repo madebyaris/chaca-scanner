@@ -425,6 +425,10 @@ fn detect_technologies_from_headers(headers: &reqwest::header::HeaderMap, info: 
             let val_lower = val.to_lowercase();
             if val_lower.contains("nginx") {
                 info.technologies.push(format!("Nginx ({})", val));
+            } else if val_lower.contains("jetty") {
+                info.technologies.push("Jetty".to_string());
+            } else if val_lower.contains("coyote") || val_lower.contains("tomcat") {
+                info.technologies.push("Tomcat".to_string());
             } else if val_lower.contains("apache") {
                 info.technologies.push(format!("Apache ({})", val));
             } else if val_lower.contains("cloudflare") {
@@ -468,14 +472,56 @@ fn detect_technologies_from_headers(headers: &reqwest::header::HeaderMap, info: 
             info.technologies.push("ASP.NET".to_string());
         }
     }
-    if headers.get("x-runtime").is_some() {
+    if info
+        .cookies
+        .iter()
+        .any(|cookie| cookie.name.eq_ignore_ascii_case("laravel_session"))
+    {
+        push_tech(info, "Laravel");
+        if info.language.is_empty() {
+            info.language = "PHP".to_string();
+        }
+        if info.framework.is_empty() {
+            info.framework = "Laravel".to_string();
+        }
+    }
+    if headers.get("x-application-context").is_some() {
+        push_tech(info, "Spring");
+        if info.language.is_empty() {
+            info.language = "Java".to_string();
+        }
+        if info.framework.is_empty() {
+            info.framework = "Spring".to_string();
+        }
+    }
+    if headers.get("x-debug-token").is_some() || headers.get("x-debug-token-link").is_some() {
+        push_tech(info, "Symfony");
+        if info.language.is_empty() {
+            info.language = "PHP".to_string();
+        }
+        if info.framework.is_empty() {
+            info.framework = "Symfony".to_string();
+        }
+    }
+    // X-Runtime alone is used by more than Rails. Require a Rails session cookie too.
+    let rails_cookie = info.cookies.iter().any(|cookie| {
+        let name = cookie.name.to_ascii_lowercase();
+        (name.ends_with("_session") || name == "_session_id") && !name.contains("laravel")
+    });
+    if headers.get("x-runtime").is_some() && rails_cookie {
+        push_tech(info, "Ruby on Rails");
         if info.language.is_empty() {
             info.language = "Ruby".to_string();
         }
-        info.technologies.push("Ruby on Rails".to_string());
+        if info.framework.is_empty() {
+            info.framework = "Ruby on Rails".to_string();
+        }
     }
-    if headers.get("x-request-id").is_some() && headers.get("x-runtime").is_some() {
-        info.framework = "Ruby on Rails".to_string();
+}
+
+fn push_tech(info: &mut TargetInfo, name: &str) {
+    if !info.technologies.iter().any(|tech| tech == name) {
+        info.technologies.push(name.to_string());
     }
 }
 
@@ -549,35 +595,56 @@ fn detect_os_hint(server: &str, info: &mut TargetInfo) {
 fn detect_technologies_from_body(body: &str, info: &mut TargetInfo) {
     let body_lower = body.to_lowercase();
 
+    // Markers are specific tokens. A bare word such as "react", "spring",
+    // "laravel", "remix", or "astro" also appears inside unrelated words.
     let tech_signatures: &[(&str, &str, &str, &str)] = &[
-        ("react", "React", "JavaScript", "React"),
         ("__next", "Next.js", "JavaScript", "Next.js"),
+        ("/_next/static", "Next.js", "JavaScript", "Next.js"),
         ("__nuxt", "Nuxt.js", "JavaScript", "Nuxt.js"),
+        ("/_nuxt/", "Nuxt.js", "JavaScript", "Nuxt.js"),
+        ("__remixcontext", "Remix", "JavaScript", "Remix"),
+        ("remix-run", "Remix", "JavaScript", "Remix"),
+        ("__svelte", "SvelteKit", "JavaScript", "SvelteKit"),
+        ("sveltekit", "SvelteKit", "JavaScript", "SvelteKit"),
+        ("astro-island", "Astro", "JavaScript", "Astro"),
+        ("data-astro-", "Astro", "JavaScript", "Astro"),
+        ("___gatsby", "Gatsby", "JavaScript", "Gatsby"),
+        ("ng-version", "Angular", "TypeScript", "Angular"),
+        ("angular.min.js", "Angular", "TypeScript", "Angular"),
+        ("angular.js", "Angular", "TypeScript", "Angular"),
         ("vue.js", "Vue.js", "JavaScript", "Vue.js"),
-        ("angular", "Angular", "TypeScript", "Angular"),
-        ("svelte", "Svelte", "JavaScript", "SvelteKit"),
-        ("gatsby", "Gatsby", "JavaScript", "Gatsby"),
-        ("remix", "Remix", "JavaScript", "Remix"),
-        ("astro", "Astro", "JavaScript", "Astro"),
+        ("__vue__", "Vue.js", "JavaScript", "Vue.js"),
+        ("data-reactroot", "React", "JavaScript", "React"),
+        ("data-reactid", "React", "JavaScript", "React"),
+        ("react-dom", "React", "JavaScript", "React"),
+        ("__react", "React", "JavaScript", "React"),
         ("jquery", "jQuery", "", ""),
         ("bootstrap", "Bootstrap", "", ""),
         ("tailwindcss", "Tailwind CSS", "", ""),
         ("wp-content", "WordPress", "PHP", "WordPress"),
         ("wp-includes", "WordPress", "PHP", "WordPress"),
         ("drupal.js", "Drupal", "PHP", "Drupal"),
-        ("joomla", "Joomla", "PHP", "Joomla"),
-        ("laravel", "Laravel", "PHP", "Laravel"),
-        ("symfony", "Symfony", "PHP", "Symfony"),
-        ("django", "Django", "Python", "Django"),
-        ("flask", "Flask", "Python", "Flask"),
-        ("ruby on rails", "Ruby on Rails", "Ruby", "Rails"),
-        ("spring", "Spring", "Java", "Spring"),
+        ("/media/jui/", "Joomla", "PHP", "Joomla"),
+        ("joomla-script-options", "Joomla", "PHP", "Joomla"),
+        ("/vendor/laravel", "Laravel", "PHP", "Laravel"),
+        ("laravel-vite-plugin", "Laravel", "PHP", "Laravel"),
+        ("sf-toolbar", "Symfony", "PHP", "Symfony"),
+        ("csrfmiddlewaretoken", "Django", "Python", "Django"),
+        ("django.contrib", "Django", "Python", "Django"),
+        ("werkzeug", "Flask", "Python", "Flask"),
+        ("fastapi", "FastAPI", "Python", "FastAPI"),
+        ("starlette", "Starlette", "Python", "Starlette"),
+        ("springframework", "Spring", "Java", "Spring"),
+        ("whitelabel error page", "Spring", "Java", "Spring"),
+        ("/skin/frontend/", "Magento", "PHP", "Magento"),
+        ("mage.cookies", "Magento", "PHP", "Magento"),
+        ("text/x-magento-init", "Magento", "PHP", "Magento"),
+        ("/static/version", "Magento", "PHP", "Magento"),
     ];
 
     for (pattern, tech_name, lang, fw) in tech_signatures {
-        if body_lower.contains(pattern) && !info.technologies.iter().any(|t| t.contains(tech_name))
-        {
-            info.technologies.push(tech_name.to_string());
+        if body_lower.contains(pattern) {
+            push_tech(info, tech_name);
             if !lang.is_empty() && info.language.is_empty() {
                 info.language = lang.to_string();
             }
@@ -630,4 +697,75 @@ fn extract_meta_generator(body: &str) -> Option<String> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{CookieInfo, TargetInfo};
+    use reqwest::header::{HeaderMap, HeaderValue};
+
+    fn techs(body: &str) -> Vec<String> {
+        let mut info = TargetInfo::default();
+        detect_technologies_from_body(body, &mut info);
+        info.technologies
+    }
+
+    #[test]
+    fn body_words_do_not_identify_a_framework() {
+        assert!(
+            !techs("This reaction is an offspring of a remix about astronomy.")
+                .contains(&"React".to_string())
+        );
+        assert!(
+            !techs("This reaction is an offspring of a remix about astronomy.")
+                .contains(&"Spring".to_string())
+        );
+        assert!(
+            !techs("This reaction is an offspring of a remix about astronomy.")
+                .contains(&"Remix".to_string())
+        );
+        assert!(
+            !techs("This reaction is an offspring of a remix about astronomy.")
+                .contains(&"Astro".to_string())
+        );
+        assert!(!techs("We use laravel and django and flask.").contains(&"Laravel".to_string()));
+        assert!(techs(r#"<div id="__NEXT_DATA__"></div>"#).contains(&"Next.js".to_string()));
+        assert!(techs(r#"window.__remixContext = {}"#).contains(&"Remix".to_string()));
+        assert!(techs(r#"<astro-island></astro-island>"#).contains(&"Astro".to_string()));
+        assert!(techs("org.springframework.web").contains(&"Spring".to_string()));
+        assert!(
+            techs(r#"<script src="/vendor/laravel/framework.js"></script>"#)
+                .contains(&"Laravel".to_string())
+        );
+    }
+
+    #[test]
+    fn server_and_cookie_fingerprints_stay_specific() {
+        let mut headers = HeaderMap::new();
+        headers.insert("server", HeaderValue::from_static("Apache-Coyote/1.1"));
+        let mut info = TargetInfo::default();
+        detect_technologies_from_headers(&headers, &mut info);
+        assert_eq!(info.technologies, vec!["Tomcat".to_string()]);
+
+        let mut headers = HeaderMap::new();
+        headers.insert("server", HeaderValue::from_static("Apache/2.4.70 (Unix)"));
+        headers.insert("x-runtime", HeaderValue::from_static("0.012"));
+        let mut info = TargetInfo::default();
+        detect_technologies_from_headers(&headers, &mut info);
+        assert!(info.technologies.iter().any(|tech| tech.contains("Apache")));
+        assert!(!info.technologies.iter().any(|tech| tech.contains("Rails")));
+
+        let mut headers = HeaderMap::new();
+        headers.insert("x-runtime", HeaderValue::from_static("0.012"));
+        let mut info = TargetInfo {
+            cookies: vec![CookieInfo {
+                name: "_app_session".to_string(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        detect_technologies_from_headers(&headers, &mut info);
+        assert!(info.technologies.iter().any(|tech| tech == "Ruby on Rails"));
+    }
 }

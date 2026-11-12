@@ -58,10 +58,12 @@ pub fn fingerprint_cms(headers: &reqwest::header::HeaderMap, body: &str) -> Opti
         return Some(CmsType::Shopify);
     }
 
-    // Magento signals
+    // Magento signals. The word "magento" alone is not one: it appears in
+    // ordinary prose. Mage.Cookies lowercases to mage.cookies.
     if body_lower.contains("/skin/frontend/")
         || body_lower.contains("mage.cookies")
-        || body_lower.contains("magento")
+        || body_lower.contains("text/x-magento-init")
+        || body_lower.contains("/static/version")
     {
         return Some(CmsType::Magento);
     }
@@ -351,6 +353,7 @@ async fn check_wordpress(base: &str, client: &reqwest::Client) -> Vec<Vulnerabil
         if resp.status().is_success() {
             let body = resp.text().await.unwrap_or_default();
             if body.to_lowercase().contains("wordpress") {
+                let location = format!("{}/readme.html", base);
                 vulns.push(Vulnerability {
                     id: "wp-readme".to_string(),
                     title: "WordPress Version Disclosure".to_string(),
@@ -358,14 +361,21 @@ async fn check_wordpress(base: &str, client: &reqwest::Client) -> Vec<Vulnerabil
                     severity: Severity::Low,
                     confidence: Confidence::Confirmed,
                     category: "API9:2023 - Improper Inventory Management".to_string(),
-                    location: format!("{}/readme.html", base),
+                    location: location.clone(),
                     evidence: "WordPress readme.html is accessible".to_string(),
                     impact: "WordPress version may help attackers target known vulnerabilities"
                         .to_string(),
                     remediation: "Remove readme.html from production".to_string(),
-                    affected_endpoints: vec![format!("{}/readme.html", base)],
+                    affected_endpoints: vec![location.clone()],
                     ..Default::default()
                 });
+                if let Some(version) = super::rules::advisories::wordpress_readme_version(&body) {
+                    if let Some(finding) =
+                        super::rules::advisories::wordpress_support_finding(&version, &location)
+                    {
+                        vulns.push(finding);
+                    }
+                }
             }
         }
     }

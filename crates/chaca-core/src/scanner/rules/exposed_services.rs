@@ -249,24 +249,6 @@ static ADMIN_PANELS: &[AdminPanel] = &[
         signatures: &["Apache Server Information", "Server Version:"],
     },
     AdminPanel {
-        path: "/_debugbar/open",
-        id: "exposed-debugbar",
-        title: "Laravel Debugbar",
-        signatures: &["debugbar", "Debugbar", "__debugbar"],
-    },
-    AdminPanel {
-        path: "/_profiler/",
-        id: "exposed-debugbar",
-        title: "Symfony Profiler",
-        signatures: &["Symfony Profiler", "sf-toolbar"],
-    },
-    AdminPanel {
-        path: "/elmah.axd",
-        id: "exposed-debugbar",
-        title: "ELMAH Error Log",
-        signatures: &["ELMAH", "Error Log", "Error Mail"],
-    },
-    AdminPanel {
         path: "/admin/",
         id: "exposed-admin-panel",
         title: "Admin Panel",

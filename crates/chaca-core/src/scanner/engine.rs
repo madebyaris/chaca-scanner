@@ -283,7 +283,7 @@ pub async fn run_scan(
         }
 
         emitter.emit("passive", 52, 100, "Checking API exposures...");
-        let mut api_checks = super::rules::api_exposure::get_api_exposure_checks();
+        let mut api_checks = super::rules::api_exposure::get_api_exposure_checks(&target_info);
         for custom_path in &config.custom_api_paths {
             let trimmed = custom_path.trim();
             if !trimmed.is_empty() {
@@ -337,7 +337,16 @@ pub async fn run_scan(
             );
             ensure_not_cancelled()?;
             let cms_vulns = super::cms::run_cms_checks(cms, &request.url, runtime.client()).await;
-            all_vulnerabilities.extend(cms_vulns);
+            let wordpress_support_already = all_vulnerabilities
+                .iter()
+                .any(|vulnerability| vulnerability.id == "wordpress-4.1-4.6-unsupported");
+            for vulnerability in cms_vulns {
+                if wordpress_support_already && vulnerability.id == "wordpress-4.1-4.6-unsupported"
+                {
+                    continue;
+                }
+                all_vulnerabilities.push(vulnerability);
+            }
         }
 
         if config.generic_exposure_checks {
@@ -394,6 +403,31 @@ pub async fn run_scan(
             .await;
             all_vulnerabilities.extend(admin_vulns);
         }
+
+        emitter.emit_detail(
+            "stacks",
+            69,
+            100,
+            "Checking stack-specific exposures...",
+            "Only probes that match the fingerprint",
+        );
+        ensure_not_cancelled()?;
+        let pages: Vec<(&str, &str)> = response_cache
+            .iter()
+            .map(|(url, (_, _, body))| (url.as_str(), body.as_str()))
+            .collect();
+        let stack_vulns = super::rules::stacks::check_stacks(
+            &request.url,
+            &target_info,
+            &pages,
+            &runtime,
+            config,
+        )
+        .await;
+        if !stack_vulns.is_empty() {
+            emitter.add_findings(stack_vulns.len() as u32);
+        }
+        all_vulnerabilities.extend(stack_vulns);
     }
 
     let active_candidate_total = inventory.active_candidates().count() as u32;

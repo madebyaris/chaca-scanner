@@ -1,7 +1,9 @@
-use crate::Severity;
+use super::stacks;
+use crate::{Severity, TargetInfo};
 
-pub fn get_api_exposure_checks() -> Vec<(&'static str, Severity)> {
-    vec![
+pub fn get_api_exposure_checks(info: &TargetInfo) -> Vec<(&'static str, Severity)> {
+    let id = stacks::identify(info);
+    let mut checks = vec![
         // Critical: debug endpoints that should never be public
         ("/debug/pprof", Severity::High),
         ("/debug/vars", Severity::High),
@@ -19,21 +21,12 @@ pub fn get_api_exposure_checks() -> Vec<(&'static str, Severity)> {
         // Medium: documentation, introspection, management
         ("/actuator", Severity::Medium),
         ("/actuator/health", Severity::Medium),
-        ("/actuator/env", Severity::Medium),
-        ("/actuator/beans", Severity::Medium),
-        ("/actuator/mappings", Severity::Medium),
-        ("/actuator/configprops", Severity::Medium),
         ("/swagger", Severity::Medium),
         ("/swagger-ui", Severity::Medium),
         ("/swagger-ui.html", Severity::Medium),
         ("/swagger.json", Severity::Medium),
         ("/swagger/v1/swagger.json", Severity::Medium),
-        ("/openapi", Severity::Medium),
-        ("/openapi.json", Severity::Medium),
-        ("/openapi.yaml", Severity::Medium),
         ("/api-docs", Severity::Medium),
-        ("/docs", Severity::Medium),
-        ("/redoc", Severity::Medium),
         ("/graphiql", Severity::Medium),
         ("/altair", Severity::Medium),
         ("/api/graphql/playground", Severity::Medium),
@@ -64,5 +57,59 @@ pub fn get_api_exposure_checks() -> Vec<(&'static str, Severity)> {
         ("/status", Severity::Info),
         ("/info", Severity::Info),
         ("/version", Severity::Info),
-    ]
+    ];
+    if id.spring {
+        checks.extend([
+            ("/actuator/env", Severity::Medium),
+            ("/actuator/beans", Severity::Medium),
+            ("/actuator/mappings", Severity::Medium),
+            ("/actuator/configprops", Severity::Medium),
+        ]);
+    }
+    if id.fastapi {
+        checks.extend([
+            ("/openapi", Severity::Medium),
+            ("/openapi.json", Severity::Medium),
+            ("/openapi.yaml", Severity::Medium),
+            ("/docs", Severity::Medium),
+            ("/redoc", Severity::Medium),
+        ]);
+    }
+    checks
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stack_paths_follow_the_fingerprint() {
+        let plain = get_api_exposure_checks(&TargetInfo::default());
+        assert!(!plain.iter().any(|(path, _)| *path == "/actuator/env"));
+        assert!(!plain.iter().any(|(path, _)| *path == "/docs"));
+        assert!(!plain.iter().any(|(path, _)| *path == "/openapi.json"));
+        assert!(plain.iter().any(|(path, _)| *path == "/debug/pprof"));
+        assert!(plain.iter().any(|(path, _)| *path == "/actuator/health"));
+
+        let spring = TargetInfo {
+            technologies: vec!["Spring".to_string()],
+            ..Default::default()
+        };
+        let spring_paths = get_api_exposure_checks(&spring);
+        assert!(spring_paths
+            .iter()
+            .any(|(path, _)| *path == "/actuator/env"));
+        assert!(!spring_paths
+            .iter()
+            .any(|(path, _)| *path == "/actuator/heapdump"));
+
+        let fastapi = TargetInfo {
+            technologies: vec!["Uvicorn".to_string()],
+            ..Default::default()
+        };
+        let docs = get_api_exposure_checks(&fastapi);
+        assert!(docs.iter().any(|(path, _)| *path == "/docs"));
+        assert!(docs.iter().any(|(path, _)| *path == "/redoc"));
+        assert!(docs.iter().any(|(path, _)| *path == "/openapi.json"));
+    }
 }
