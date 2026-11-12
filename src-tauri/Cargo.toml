@@ -1,6 +1,6 @@
 [package]
 name = "securescan"
-version = "0.8.0"
+version = "0.9.0"
 description = "A user-friendly security scanner for vibe coders and developers"
 authors = ["Aris Setiawan"]
 edition = "2021"
