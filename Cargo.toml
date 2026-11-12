@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/chaca-core", "crates/chaca-app", "src-tauri"]
+members = ["crates/chaca-core", "crates/chaca-app"]
 
 [workspace.package]
 version = "0.9.0"

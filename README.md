@@ -8,8 +8,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/version-0.9.0-18181b?style=flat-square" alt="version" />
   <img src="https://img.shields.io/badge/license-MIT-18181b?style=flat-square" alt="license" />
-  <img src="https://img.shields.io/badge/Tauri-2-18181b?style=flat-square" alt="tauri" />
-  <img src="https://img.shields.io/badge/React-19-18181b?style=flat-square" alt="react" />
+  <img src="https://img.shields.io/badge/GPUI-0.2-18181b?style=flat-square" alt="gpui" />
   <img src="https://img.shields.io/badge/Rust-1.77+-18181b?style=flat-square" alt="rust" />
 </p>
 
@@ -28,13 +27,13 @@
 | New Scan | Dashboard | Full Report |
 |:--------:|:----------:|:-----------:|
 | [<img src="assets/home.png" width="280" alt="Chaca New Scan screen" />](assets/home.png) | [<img src="assets/detail.png" width="280" alt="Chaca Dashboard" />](assets/detail.png) | [<img src="assets/list-vuln.png" width="280" alt="Chaca vulnerability list" />](assets/list-vuln.png) |
-| Configure target URL, scan mode (Passive/Active/Full), or scan a local folder | Security score, vulnerability trend, target intelligence | Filter by severity, CWE references, export to JSON/CSV/SARIF/PDF |
+| Configure target URL and scan mode (Passive/Active/Full) | Security score, vulnerability counts, target intelligence | Filter by severity, CWE references, export to JSON/CSV/SARIF |
 
 ---
 
 ## What is Chaca?
 
-**Chaca** = **Cha**lim S**ca**nner — a desktop app built with **Tauri 2**, **React 19**, and **Rust** that scans web applications for security issues. Designed for developers who want actionable results without learning Burp Suite or OWASP ZAP.
+**Chaca** = **Cha**lim S**ca**nner — a native desktop app built with **GPUI** and **Rust** that scans web applications for security issues. Designed for developers who want actionable results without learning Burp Suite or OWASP ZAP.
 
 ---
 
@@ -54,19 +53,14 @@
 | **Knowledge** | 50+ vulnerability definitions with CWE, CVSS severity, remediation, references |
 | **Quality** | Confidence scoring (Confirmed/Firm/Tentative), deduplication, category-capped security score (0–100) |
 
-### Desktop App (React + Tailwind)
+### Desktop App (GPUI)
 
-- Monospace-first minimal UI
-- Real-time progress (crawl → passive → active)
-- Dashboard with score, charts, stats, target intelligence panel
-- Report viewer with CWE links and external references
-- Filter by severity and confidence
-- Export to JSON, CSV, SARIF, and PDF
-- Scan helpers: quick headers, login-first setup, branded PDF exports
-- Persistent scan history across app restarts
-- Scan presets (Quick passive, API audit, Full scan) + custom presets
-- Local folder scanning: secrets, config exposure, endpoint inventory, code-smell detection (local-only)
-- Settings page (network, crawling, passive, active, data detection, export, presets) with persistent storage
+- Native window with live progress from crawl through the checks
+- Dashboard with score, stats, and target intelligence
+- Findings with severity filters, evidence, remediation, CWE, and references
+- API exposure and data exposure views
+- Export to JSON, CSV, and SARIF
+- Session history for the scans finished in this run of the app
 
 ---
 
@@ -74,11 +68,8 @@
 
 | Layer | Technology |
 |-------|------------|
-| Shell | Tauri 2 |
-| Frontend | React 19, TypeScript, Tailwind CSS v4 |
-| State | Zustand, tauri-plugin-store |
-| UI | Radix UI, Lucide icons, Recharts |
-| Backend | Rust (reqwest, regex, tokio, serde, tracing, base64) |
+| Shell | GPUI 0.2 |
+| Scanner | Rust (reqwest, regex, tokio, serde, tracing) |
 
 ---
 
@@ -86,73 +77,50 @@
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) 18+
 - [Rust](https://rustup.rs/) 1.77+
-- [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform
+- On Linux, the Wayland or X11, fontconfig, and Vulkan libraries (`libwayland`, `libxkbcommon`, `libfontconfig`, `libvulkan`)
 
 ### Run
 
 ```bash
-npm install
-npm run tauri dev
+cargo run -p chaca-app
 ```
 
 ### Build
 
 ```bash
-npm run tauri build
+cargo build -p chaca-app --release
 ```
 
-Output: `src-tauri/target/release/bundle/`
+The binary is `target/release/chaca-app` (`chaca-app.exe` on Windows).
 
 ### Release (GitHub)
 
-Pre-built binaries for **Windows (x64)** and **Linux (x64 AppImage)** are published to [GitHub Releases](https://github.com/madebyaris/chaca-scanner/releases) on each version tag. macOS builds currently require local compilation because Chaca is not yet signed/notarized with an Apple Developer account.
+Pre-built binaries are published to [GitHub Releases](https://github.com/madebyaris/chaca-scanner/releases) on each version tag.
 
 **To cut a release:**
 
-1. Bump version in `package.json` and `src-tauri/tauri.conf.json`
+1. Bump `version` in the workspace `Cargo.toml` and both crate manifests
 2. Commit and push
 3. Create and push a version tag: `git tag v0.9.0 && git push origin v0.9.0`
-4. GitHub Actions builds all platforms and creates a draft release
+4. GitHub Actions builds macOS, Linux, and Windows and creates a draft release
 5. Edit the draft release, add release notes, and publish
 
 **Expected artifacts:**
 
-| Platform | Artifact | Notes |
-|----------|----------|-------|
-| macOS (Apple Silicon) | Build locally | For now, macOS developers should compile Chaca themselves with `npm run tauri build` |
-| Windows (x64) | `Chaca_0.9.0_x64-portable.exe` | Run directly; requires [WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) on Windows 10 |
-| Windows (x64) | `Chaca_0.9.0_x64-setup.nsis.exe` | Installer (includes WebView2) |
-| Linux (x64) | `Chaca_0.9.0_amd64.AppImage` | Run directly |
+| Platform | Artifact |
+|----------|----------|
+| macOS (Apple Silicon) | `chaca-macos-aarch64` |
+| Linux (x64) | `chaca-linux-x64` |
+| Windows (x64) | `chaca-windows-x64.exe` |
 
-**Note:** Current releases are unsigned. Windows may show security warnings, and macOS public distribution is temporarily blocked until Chaca is signed/notarized. Ensure **Settings → Actions → General → Workflow permissions** is set to "Read and write permissions" so the release workflow can create releases.
-
-### macOS "Damaged" Warning
-
-If macOS says `"Chaca.app" is damaged and can't be opened`, the app is usually being blocked by Gatekeeper because it is unsigned or was downloaded with a quarantine flag.
-
-If you are a Mac developer, the most reliable option for now is to clone the repo and build locally:
+Releases are unsigned. Windows may show a security warning. On macOS, if Gatekeeper blocks the download, clear the quarantine flag and open the binary again:
 
 ```bash
-npm install
-npm run tauri build
+xattr -d com.apple.quarantine ./chaca-macos-aarch64
 ```
 
-Try these steps:
-
-1. Open the `.dmg`
-2. Drag `Chaca.app` into `Applications`
-3. In Finder, right-click `Chaca.app` and choose `Open`
-4. If macOS still blocks it, go to `System Settings -> Privacy & Security` and click `Open Anyway`
-
-If that still does not work, remove the quarantine attribute manually:
-
-```bash
-xattr -dr com.apple.quarantine "/Applications/Chaca.app"
-```
-
-Then open the app again.
+Ensure **Settings → Actions → General → Workflow permissions** is set to "Read and write permissions" so the release workflow can create releases.
 
 ---
 
@@ -163,13 +131,7 @@ Then open the app again.
 2. Choose **Passive** or **Full** scan
 3. Review dashboard — score, vulnerabilities, target intelligence
 4. Open findings for evidence, remediation, CWE references
-5. Export as JSON, CSV, SARIF, or PDF
-
-### Local Folder Scan (v0.6)
-1. Click **SCAN FOLDER** and select a project directory
-2. Chaca scans for: secrets (AWS, GitHub, Stripe, etc.), exposed config files (`.env`, CI, K8s), and endpoint patterns (Express, Next.js, FastAPI)
-3. All scanning is local-only; no content leaves your machine
-4. Results appear in the same dashboard; export as usual
+5. Export as JSON, CSV, or SARIF
 
 > **Only scan targets you have explicit permission to test.**
 
@@ -178,35 +140,24 @@ Then open the app again.
 ## Project Structure
 
 ```
-src/                    # React frontend
-├── components/
-│   ├── dashboard/      # Scan results, charts, target intelligence
-│   ├── layout/         # App shell, sidebar, header
-│   ├── settings/       # Settings page and controls
-│   └── ui/             # Radix-based primitives
-├── store/              # Zustand (scan state, settings)
-└── utils/              # Export helpers
-
-src-tauri/              # Rust backend
-└── src/
-    ├── scanner/
-    │   ├── engine.rs       # Scan orchestrator
-    │   ├── crawler.rs      # URL discovery
-    │   ├── folder_scanner.rs # Local folder scan (secrets, config, endpoints)
-    │   ├── passive.rs      # Passive checks
-    │   ├── active.rs       # Active tests
-    │   ├── cms.rs          # CMS detection
-    │   ├── recon.rs        # Target intelligence
-    │   └── rules/          # api_exposure, data_exposure, info_disclosure,
-    │                       # exposed_services, vuln_db
-    └── lib.rs          # Tauri commands & data structures
+crates/chaca-app/       # GPUI desktop window
+crates/chaca-core/      # Scanner engine
+└── src/scanner/
+    ├── engine.rs           # Scan orchestrator
+    ├── crawler.rs          # URL discovery
+    ├── folder_scanner.rs   # Local folder scan
+    ├── passive.rs          # Passive checks
+    ├── active.rs           # Active tests
+    ├── cms.rs              # CMS detection
+    ├── recon.rs            # Target intelligence
+    └── rules/              # Advisories, exposure, disclosure, services
 ```
 
 ---
 
 ## Support
 
-Chaca is **100% free and open source** under the [MIT license](LICENSE). Every feature — PDF export, login-first scanning, quick headers, scan profiles, unlimited history — is available to everyone. No license keys, no subscriptions, no feature gates.
+Chaca is **100% free and open source** under the [MIT license](LICENSE). Every feature in the app is available to everyone. No license keys, no subscriptions, no feature gates.
 
 You can still support the project if you like:
 

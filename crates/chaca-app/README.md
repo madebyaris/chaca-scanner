@@ -147,11 +147,10 @@ Generated logs, report exports, and development bundles are ignored within
 
 ## Scope and limits
 
-All requested native scan/progress/results/filter/export flows are implemented.
-History is session-only. Existing React advanced settings, login/presets, triage,
-baseline/trend charts, folder scans, and PDF exports are not ported in this
-native shell; scans use `ScanConfig::default()`. Active and Full modes are wired
-to the real engine but were not used against external targets during verification.
+Scan, progress, results, filters, and JSON/CSV/SARIF export are implemented.
+History is session-only. Scans use `ScanConfig::default()`. Active and Full
+modes are wired to the engine but were not used against external targets during
+verification.
 
 Runtime verification was on macOS arm64 only. GPUI's accessibility tree exposed
 window chrome rather than semantic controls in this build, so custom controls
